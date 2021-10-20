@@ -53,7 +53,7 @@ def perform_pre_checks():
     check_rhel_compatible_kernel_is_used()
     check_custom_repos_are_valid()
     check_package_updates()
-    check_live_kernel_version()
+    check_installed_kernel_version()
 
 
 def perform_pre_ponr_checks():
