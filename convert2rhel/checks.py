@@ -21,6 +21,8 @@ import logging
 import os
 import re
 
+from distutils.version import LooseVersion
+
 from convert2rhel import grub
 from convert2rhel.pkghandler import call_yum_cmd, get_installed_pkg_objects, get_pkg_fingerprint
 from convert2rhel.systeminfo import system_info
@@ -50,6 +52,8 @@ def perform_pre_checks():
     check_readonly_mounts()
     check_rhel_compatible_kernel_is_used()
     check_custom_repos_are_valid()
+    check_package_updates()
+    check_live_kernel_version()
 
 
 def perform_pre_ponr_checks():
@@ -449,3 +453,47 @@ def _bad_kernel_substring(kernel_release):
         )
         return True
     return False
+
+
+def check_package_updates():
+    """Ensures that the system packages installed are up-to-date."""
+    logger.task("Prepare: Checking if the packages are up-to-date")
+
+    yum_stdout, _ = run_subprocess("yum check-update -q", print_output=False)
+
+    # There is a whole blank line before outputting the packages to update
+    # and to output the real counting, we just -1 the counting.
+    packages_to_update_count = yum_stdout.count("\n") - 1
+
+    if packages_to_update_count > 0:
+        logger.critical(
+            "The system has {0} packages to be updated. "
+            "To proceed with the conversion, update the packages on your system by executing the following step:\n\n"
+            "1. Run: yum update -y\n".format(packages_to_update_count)
+        )
+    else:
+        logger.info("System is up-to-date.")
+
+
+def check_live_kernel_version():
+    """Check if the installed kernel is behind or at the same version in yum repos"""
+    logger.task("Prepare: Checking if the installed kernel version is the most recent.")
+
+    # The latest kernel version on repo
+    repoquery_output, _ = run_subprocess('repoquery --qf "%{version}-%{release}.%{arch}" kernel')
+
+    # The installed kernel version
+    uname_output, _ = run_subprocess("uname -r")
+
+    match = LooseVersion(repoquery_output) > LooseVersion(uname_output)
+
+    if match:
+        logger.critical(
+            "The current kernel version installed is behind the latest version.\n"
+            " Latest kernel version: {0}"
+            " Current installed kernel: {1}\n"
+            "To proceed with the conversion, update the kernel version by executing the following step:\n\n"
+            "1. yum update kernel-{2} -y\n".format(repoquery_output, uname_output, repoquery_output)
+        )
+    else:
+        logger.info("Kernel currently installed is at the latest version.")

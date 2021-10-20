@@ -27,6 +27,8 @@ from convert2rhel.checks import (
     _bad_kernel_package_signature,
     _bad_kernel_substring,
     _bad_kernel_version,
+    check_live_kernel_version,
+    check_package_updates,
     check_rhel_compatible_kernel_is_used,
     get_loaded_kmods,
 )
@@ -43,12 +45,10 @@ try:
 except ImportError:
     import unittest
 
-
 if sys.version_info[:2] <= (2, 7):
     import mock  # pylint: disable=import-error
 else:
     from unittest import mock  # pylint: disable=no-name-in-module
-
 
 MODINFO_STUB = (
     "/lib/modules/5.8.0-7642-generic/kernel/lib/a.ko.xz\n"
@@ -101,6 +101,9 @@ def test_perform_pre_checks(monkeypatch):
     check_readonly_mounts_mock = mock.Mock()
     check_custom_repos_are_valid_mock = mock.Mock()
     check_rhel_compatible_kernel_is_used_mock = mock.Mock()
+    check_package_updates_mock = mock.Mock()
+    check_live_kernel_version_mock = mock.Mock()
+
     monkeypatch.setattr(
         checks,
         "check_efi",
@@ -126,6 +129,13 @@ def test_perform_pre_checks(monkeypatch):
         "check_custom_repos_are_valid",
         value=check_custom_repos_are_valid_mock,
     )
+    monkeypatch.setattr(
+        checks,
+        "check_custom_repos_are_valid",
+        value=check_custom_repos_are_valid_mock,
+    )
+    monkeypatch.setattr(checks, "check_package_updates", value=check_package_updates_mock)
+    monkeypatch.setattr(checks, "check_live_kernel_version", value=check_live_kernel_version_mock)
 
     checks.perform_pre_checks()
 
@@ -133,6 +143,8 @@ def test_perform_pre_checks(monkeypatch):
     check_efi_mock.assert_called_once()
     check_readonly_mounts_mock.assert_called_once()
     check_rhel_compatible_kernel_is_used_mock.assert_called_once()
+    check_package_updates_mock.assert_called_once()
+    check_live_kernel_version_mock.assert_called_once()
 
 
 def test_pre_ponr_checks(monkeypatch):
@@ -813,3 +825,86 @@ class TestReadOnlyMountsChecks(unittest.TestCase):
         self.assertEqual(len(checks.logger.critical_msgs), 1)
         self.assertEqual(len(checks.logger.info_msgs), 0)
         self.assertTrue("Unable to access the repositories passed through " in checks.logger.critical_msgs[0])
+
+
+@pytest.mark.parametrize(
+    ("package", "return_code", "raise_system_exit"),
+    (
+        (
+            "convert2rhel.noarch   0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
+            "convert2rhel.src      0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
+            "tzdata.noarch         2021c-1.el8                                         baseos\n",
+            0,
+            True,
+        ),
+        ("", 0, False),
+    ),
+)
+def test_check_package_updates(package, return_code, raise_system_exit, monkeypatch, caplog):
+    run_subprocess_mocked = mock.Mock(
+        spec=run_subprocess,
+        side_effect=run_subprocess_side_effect(
+            (
+                (
+                    "yum",
+                    "check-update",
+                    "-q",
+                ),
+                (package, return_code),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        checks,
+        "run_subprocess",
+        value=run_subprocess_mocked,
+    )
+
+    if raise_system_exit:
+        with pytest.raises(SystemExit):
+            assert check_package_updates()
+    else:
+        check_package_updates()
+        assert "System is up-to-date." in caplog.records[-1].message
+
+
+@pytest.mark.parametrize(
+    ("repoquery_version", "uname_version", "return_code", "raise_system_exit"),
+    (
+        ("3.10.0-1160.45.1.el7.x86_64", "3.10.0-1160.42.2.el7.x86_64", 0, True),
+        ("3.10.0-1160.45.1.el7.x86_64", "3.10.0-1160.45.1.el7.x86_64", 0, False),
+    ),
+)
+def test_check_live_kernel_version(
+    repoquery_version, uname_version, return_code, raise_system_exit, monkeypatch, caplog
+):
+    run_subprocess_mocked = mock.Mock(
+        spec=run_subprocess,
+        side_effect=run_subprocess_side_effect(
+            (
+                (
+                    "repoquery",
+                    "--qf",
+                    '"%{version}-%{release}.%{arch}"',
+                    "kernel",
+                ),
+                (
+                    repoquery_version,
+                    return_code,
+                ),
+            ),
+            (("uname", "-r"), (uname_version, return_code)),
+        ),
+    )
+    monkeypatch.setattr(
+        checks,
+        "run_subprocess",
+        value=run_subprocess_mocked,
+    )
+
+    if raise_system_exit:
+        with pytest.raises(SystemExit):
+            check_live_kernel_version()
+    else:
+        check_live_kernel_version()
+        assert "Kernel currently installed is at the latest version." in caplog.records[-1].message
