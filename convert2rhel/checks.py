@@ -475,7 +475,7 @@ def check_package_updates():
         logger.info("System is up-to-date.")
 
 
-def check_live_kernel_version():
+def check_installed_kernel_version():
     """Check if the installed kernel is behind or at the same version in yum repos"""
     logger.task("Prepare: Checking if the installed kernel version is the most recent.")
 

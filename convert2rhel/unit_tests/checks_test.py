@@ -27,7 +27,7 @@ from convert2rhel.checks import (
     _bad_kernel_package_signature,
     _bad_kernel_substring,
     _bad_kernel_version,
-    check_live_kernel_version,
+    check_installed_kernel_version,
     check_package_updates,
     check_rhel_compatible_kernel_is_used,
     get_loaded_kmods,
@@ -102,7 +102,7 @@ def test_perform_pre_checks(monkeypatch):
     check_custom_repos_are_valid_mock = mock.Mock()
     check_rhel_compatible_kernel_is_used_mock = mock.Mock()
     check_package_updates_mock = mock.Mock()
-    check_live_kernel_version_mock = mock.Mock()
+    check_installed_kernel_version_mock = mock.Mock()
 
     monkeypatch.setattr(
         checks,
@@ -135,7 +135,7 @@ def test_perform_pre_checks(monkeypatch):
         value=check_custom_repos_are_valid_mock,
     )
     monkeypatch.setattr(checks, "check_package_updates", value=check_package_updates_mock)
-    monkeypatch.setattr(checks, "check_live_kernel_version", value=check_live_kernel_version_mock)
+    monkeypatch.setattr(checks, "check_installed_kernel_version", value=check_installed_kernel_version_mock)
 
     checks.perform_pre_checks()
 
@@ -144,7 +144,7 @@ def test_perform_pre_checks(monkeypatch):
     check_readonly_mounts_mock.assert_called_once()
     check_rhel_compatible_kernel_is_used_mock.assert_called_once()
     check_package_updates_mock.assert_called_once()
-    check_live_kernel_version_mock.assert_called_once()
+    check_installed_kernel_version_mock.assert_called_once()
 
 
 def test_pre_ponr_checks(monkeypatch):
@@ -875,7 +875,7 @@ def test_check_package_updates(package, return_code, raise_system_exit, monkeypa
         ("3.10.0-1160.45.1.el7.x86_64", "3.10.0-1160.45.1.el7.x86_64", 0, False),
     ),
 )
-def test_check_live_kernel_version(
+def test_check_installed_kernel_version(
     repoquery_version, uname_version, return_code, raise_system_exit, monkeypatch, caplog
 ):
     run_subprocess_mocked = mock.Mock(
@@ -904,7 +904,7 @@ def test_check_live_kernel_version(
 
     if raise_system_exit:
         with pytest.raises(SystemExit):
-            check_live_kernel_version()
+            check_installed_kernel_version()
     else:
-        check_live_kernel_version()
+        check_installed_kernel_version()
         assert "Kernel currently installed is at the latest version." in caplog.records[-1].message
