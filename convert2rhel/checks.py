@@ -467,9 +467,9 @@ def check_package_updates():
 
     if packages_to_update_count > 0:
         logger.critical(
-            "The system has {0} packages to be updated. "
+            "The system has %s packages to be updated. "
             "To proceed with the conversion, update the packages on your system by executing the following step:\n\n"
-            "1. Run: yum update -y\n".format(packages_to_update_count)
+            "1. Run: yum update -y\n" % packages_to_update_count
         )
     else:
         logger.info("System is up-to-date.")
@@ -490,10 +490,10 @@ def check_installed_kernel_version():
     if match:
         logger.critical(
             "The current kernel version installed is behind the latest version.\n"
-            " Latest kernel version: {0}"
-            " Current installed kernel: {1}\n"
+            " Latest kernel version: %s"
+            " Current installed kernel: %s\n"
             "To proceed with the conversion, update the kernel version by executing the following step:\n\n"
-            "1. yum update kernel-{2} -y\n".format(repoquery_output, uname_output, repoquery_output)
+            "1. yum install kernel-%s -y\n" % (repoquery_output, uname_output, repoquery_output)
         )
     else:
         logger.info("Kernel currently installed is at the latest version.")
