@@ -32,7 +32,7 @@ from convert2rhel.utils import get_file_content, run_subprocess
 
 logger = logging.getLogger(__name__)
 
-PACKAGE_NAMES_RE = r"^[0-9]*:?([a-z][a-z0-9-_]*?)(-[0-9])*\."
+PACKAGE_NAMES_RE = re.compile(r"^[0-9]*:?([a-z][a-z0-9-_]*?)(-[0-9])*\.", flags=re.MULTILINE)
 KERNEL_REPO_RE = re.compile(r"^.+:(?P<version>.+).el.+$")
 KERNEL_REPO_VER_SPLIT_RE = re.compile(r"\W+")
 BAD_KERNEL_RELEASE_SUBSTRINGS = ("uek", "rt", "linode")
@@ -459,13 +459,26 @@ def check_package_updates():
     logger.task("Prepare: Checking if the packages are up-to-date")
 
     yum_stdout, _ = run_subprocess("yum check-update -q", print_output=False)
-    packages_to_update = re.findall(PACKAGE_NAMES_RE, yum_stdout, flags=re.MULTILINE)
+    print(yum_stdout)
+    # packages = re.findall(PACKAGE_NAMES_RE, yum_stdout)
 
-    if packages_to_update > 0:
+    # total_packages = packages.count()
+
+    lines = yum_stdout.split("\n")
+
+    # Filter lines that only have whitespace or are blank
+    lines = (line for line in yum_stdout.split("\n") if line.strip())
+    # Filter informational lines that don't have to do with available packages
+    lines = (line for line in lines if not line.endswith("is an installed security update"))
+    packages = [line for line ingit lines if not line.endswith("is the currently running version")]
+
+    total_packages = len(packages)
+
+    if total_packages > 0:
         logger.critical(
             "The system has %s packages to be updated. "
             "To proceed with the conversion, update the packages on your system by executing the following step:\n\n"
-            "Run: yum update -y\n" % len(packages_to_update)
+            "Run: yum update -y\n" % total_packages
         )
     else:
         logger.info("System is up-to-date.")

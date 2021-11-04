@@ -833,7 +833,9 @@ class TestReadOnlyMountsChecks(unittest.TestCase):
         (
             "convert2rhel.noarch   0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
             "convert2rhel.src      0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
-            "tzdata.noarch         2021c-1.el8                                         baseos\n",
+            "tzdata.noarch         2021c-1.el8                                         baseos\n"
+            "Security: kernel-core-5.14.15-100.fc33.x86_64 is an installed security update\n"
+            "Security: kernel-core-5.14.13-100.fc33.x86_64 is the currently running version\n",
             0,
             True,
         ),
@@ -862,7 +864,8 @@ def test_check_package_updates(package, return_code, raise_system_exit, monkeypa
 
     if raise_system_exit:
         with pytest.raises(SystemExit):
-            assert check_package_updates()
+            check_package_updates()
+            assert "The system has 5 packages to be updated." in caplog.records[-1].message
     else:
         check_package_updates()
         assert "System is up-to-date." in caplog.records[-1].message
