@@ -878,7 +878,7 @@ def has_duplicate_repos_across_disablerepo_enablerepo_options():
 
 
 def compare_package_versions(version1, version2):
-    """Compare two nevra versions against each other.
+    """Compare two EVR versions against each other.
 
     Example
 
@@ -886,12 +886,12 @@ def compare_package_versions(version1, version2):
         >>> match # -1
 
     Return outputs could be
-        -1 if the nevra1 is less then nevra2 version
-        0 if the nevra1 is equal nevra2 version
-        1 if the nevra1 is greater than nevra2 version
+        -1 if the evr1 is less then evr2 version
+        0 if the evr1 is equal evr2 version
+        1 if the evr1 is greater than evr2 version
     """
 
-    nevra1 = utils.string_to_version(version1)
-    nevra2 = utils.string_to_version(version2)
+    evr1 = utils.string_to_version(version1)
+    evr2 = utils.string_to_version(version2)
 
-    return rpm.labelCompare(nevra1, nevra2)
+    return rpm.labelCompare(evr1, evr2)
