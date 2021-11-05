@@ -1386,6 +1386,11 @@ class TestPkgHandler(unit_tests.ExtendedTestCase):
         self.assertTrue(any("Boot kernel validated." in message for message in pkghandler.logging.getLogger.debug_msgs))
         self.assertTrue(len(pkghandler.logging.getLogger.warning_msgs) == 0)
 
+    @unit_tests.mock(rpm, "labelCompare", lambda x, y: 0)
+    @unit_tests.mock(utils, "string_to_version", lambda x: ("0", "123", "4.fc35"))
+    def test_compare_package_versions(self):
+        self.assertEqual(pkghandler.compare_package_versions("123-4.fc35", "123-4.fc35"), 0)
+
 
 YUM_PROTECTED_ERROR = """Error: Trying to remove "systemd", which is protected
 Error: Trying to remove "yum", which is protected"""

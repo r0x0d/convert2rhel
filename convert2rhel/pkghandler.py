@@ -875,3 +875,23 @@ def has_duplicate_repos_across_disablerepo_enablerepo_options():
             message += "\n%s" % repo
         message += "\nThis ambiguity may have unintended consequences."
         loggerinst.warning(message)
+
+
+def compare_package_versions(version1, version2):
+    """Compare two nevra versions against each other.
+
+    Example
+
+        >>> match = compare_package_versions("5.14.10-300.fc35", "5.14.15-300.fc35")
+        >>> match # -1
+
+    Return outputs could be
+        -1 if the nevra1 is less then nevra2 version
+        0 if the nevra1 is equal nevra2 version
+        1 if the nevra1 is greater than nevra2 version
+    """
+
+    nevra1 = utils.string_to_version(version1)
+    nevra2 = utils.string_to_version(version2)
+
+    return rpm.labelCompare(nevra1, nevra2)
