@@ -27,10 +27,10 @@ from convert2rhel.checks import (
     _bad_kernel_package_signature,
     _bad_kernel_substring,
     _bad_kernel_version,
-    check_installed_kernel_version,
     check_package_updates,
     check_rhel_compatible_kernel_is_used,
     get_loaded_kmods,
+    is_loaded_kernel_latest,
 )
 from convert2rhel.pkghandler import get_pkg_fingerprint
 from convert2rhel.systeminfo import system_info
@@ -102,7 +102,7 @@ def test_perform_pre_checks(monkeypatch):
     check_custom_repos_are_valid_mock = mock.Mock()
     check_rhel_compatible_kernel_is_used_mock = mock.Mock()
     check_package_updates_mock = mock.Mock()
-    check_installed_kernel_version_mock = mock.Mock()
+    is_loaded_kernel_latest_mock = mock.Mock()
 
     monkeypatch.setattr(
         checks,
@@ -135,7 +135,7 @@ def test_perform_pre_checks(monkeypatch):
         value=check_custom_repos_are_valid_mock,
     )
     monkeypatch.setattr(checks, "check_package_updates", value=check_package_updates_mock)
-    monkeypatch.setattr(checks, "check_installed_kernel_version", value=check_installed_kernel_version_mock)
+    monkeypatch.setattr(checks, "is_loaded_kernel_latest", value=is_loaded_kernel_latest_mock)
 
     checks.perform_pre_checks()
 
@@ -144,7 +144,7 @@ def test_perform_pre_checks(monkeypatch):
     check_readonly_mounts_mock.assert_called_once()
     check_rhel_compatible_kernel_is_used_mock.assert_called_once()
     check_package_updates_mock.assert_called_once()
-    check_installed_kernel_version_mock.assert_called_once()
+    is_loaded_kernel_latest_mock.assert_called_once()
 
 
 def test_pre_ponr_checks(monkeypatch):
@@ -828,12 +828,18 @@ class TestReadOnlyMountsChecks(unittest.TestCase):
 
 
 @pytest.mark.parametrize(
-    ("package", "return_code", "raise_system_exit"),
+    ("packages", "return_code", "raise_warning"),
     (
         (
-            "convert2rhel.noarch   0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
-            "convert2rhel.src      0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
-            "tzdata.noarch         2021c-1.el8                                         baseos\n"
+            "\n"
+            "convert2rhel.noarch        0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
+            "convert2rhel.src           0.24-1.20211019110627581338.pr343.11.g4ff8753.el8   copr:copr.fedorainfracloud.org:group_oamg:convert2rhel\n"
+            "tzdata.noarch              2021c-1.el8                                         baseos\n"
+            "sssd-krb5-common.x86_64    2.6.0-2.fc35                                        updates\n"
+            "sssd-ldap.x86_64           2.6.0-2.fc35                                        updates\n"
+            "sssd-nfs-idmap.x86_64      2.6.0-2.fc35                                        updates\n"
+            "sssd-proxy.x86_64          2.6.0-2.fc35                                        updates\n"
+            "sssd-tools.x86_64          2.6.0-2.fc35                                        updates\n"
             "Security: kernel-core-5.14.15-100.fc33.x86_64 is an installed security update\n"
             "Security: kernel-core-5.14.13-100.fc33.x86_64 is the currently running version\n",
             0,
@@ -842,7 +848,7 @@ class TestReadOnlyMountsChecks(unittest.TestCase):
         ("", 0, False),
     ),
 )
-def test_check_package_updates(package, return_code, raise_system_exit, monkeypatch, caplog):
+def test_check_package_updates(packages, return_code, raise_warning, monkeypatch, caplog):
     run_subprocess_mocked = mock.Mock(
         spec=run_subprocess,
         side_effect=run_subprocess_side_effect(
@@ -852,7 +858,7 @@ def test_check_package_updates(package, return_code, raise_system_exit, monkeypa
                     "check-update",
                     "-q",
                 ),
-                (package, return_code),
+                (packages, return_code),
             ),
         ),
     )
@@ -862,10 +868,9 @@ def test_check_package_updates(package, return_code, raise_system_exit, monkeypa
         value=run_subprocess_mocked,
     )
 
-    if raise_system_exit:
-        with pytest.raises(SystemExit):
-            check_package_updates()
-            assert "The system has 5 packages to be updated." in caplog.records[-1].message
+    if raise_warning:
+        check_package_updates()
+        assert "The system has 8 packages to be updated." in caplog.records[-1].message
     else:
         check_package_updates()
         assert "System is up-to-date." in caplog.records[-1].message
@@ -874,21 +879,20 @@ def test_check_package_updates(package, return_code, raise_system_exit, monkeypa
 @pytest.mark.parametrize(
     ("repoquery_version", "uname_version", "return_code", "raise_system_exit"),
     (
-        ("3.10.0-1160.45.1.el7.x86_64", "3.10.0-1160.42.2.el7.x86_64", 0, True),
-        ("3.10.0-1160.45.1.el7.x86_64", "3.10.0-1160.45.1.el7.x86_64", 0, False),
+        ("1634146676\t3.10.0-1160.45.1.el7", "3.10.0-1160.42.2.el7.x86_64", 0, True),
+        ("1634146676\t3.10.0-1160.45.1.el7", "3.10.0-1160.45.1.el7.x86_64", 0, False),
     ),
 )
-def test_check_installed_kernel_version(
-    repoquery_version, uname_version, return_code, raise_system_exit, monkeypatch, caplog
-):
+def test_is_loaded_kernel_latest(repoquery_version, uname_version, return_code, raise_system_exit, monkeypatch, caplog):
     run_subprocess_mocked = mock.Mock(
         spec=run_subprocess,
         side_effect=run_subprocess_side_effect(
             (
                 (
                     "repoquery",
+                    "-q",
                     "--qf",
-                    '"%{version}-%{release}.%{arch}"',
+                    '"%{BUILDTIME}\\t%{VERSION}-%{RELEASE}"',
                     "kernel",
                 ),
                 (
@@ -907,7 +911,12 @@ def test_check_installed_kernel_version(
 
     if raise_system_exit:
         with pytest.raises(SystemExit):
-            check_installed_kernel_version()
+            is_loaded_kernel_latest()
+
+        repoquery_kernel_version = repoquery_version.split("\t", 1)[1]
+        uname_kernel_version = uname_version.rsplit(".", 1)[0]
+        assert "Latest kernel version: %s\n" % (repoquery_kernel_version) in caplog.records[-1].message
+        assert "Current loaded kernel: %s\n" % (uname_kernel_version) in caplog.records[-1].message
     else:
-        check_installed_kernel_version()
-        assert "Kernel currently installed is at the latest version." in caplog.records[-1].message
+        is_loaded_kernel_latest()
+        assert "Kernel currently loaded is at the latest version." in caplog.records[-1].message

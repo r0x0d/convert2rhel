@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright(C) 2016 Red Hat, Inc.
 #
@@ -21,10 +20,13 @@ import logging
 import os
 import re
 
-from distutils.version import LooseVersion
-
 from convert2rhel import grub
-from convert2rhel.pkghandler import call_yum_cmd, get_installed_pkg_objects, get_pkg_fingerprint
+from convert2rhel.pkghandler import (
+    call_yum_cmd,
+    compare_package_versions,
+    get_installed_pkg_objects,
+    get_pkg_fingerprint,
+)
 from convert2rhel.systeminfo import system_info
 from convert2rhel.toolopts import tool_opts
 from convert2rhel.utils import get_file_content, run_subprocess
@@ -48,13 +50,14 @@ COMPATIBLE_KERNELS_VERS = {
 
 def perform_pre_checks():
     """Early checks after system facts should be added here."""
+
     check_efi()
     check_tainted_kmods()
     check_readonly_mounts()
     check_rhel_compatible_kernel_is_used()
     check_custom_repos_are_valid()
     check_package_updates()
-    check_installed_kernel_version()
+    is_loaded_kernel_latest()
 
 
 def perform_pre_ponr_checks():
@@ -459,23 +462,20 @@ def check_package_updates():
     logger.task("Prepare: Checking if the packages are up-to-date")
 
     yum_stdout, _ = run_subprocess("yum check-update -q", print_output=False)
-    print(yum_stdout)
-    # packages = re.findall(PACKAGE_NAMES_RE, yum_stdout)
-
-    # total_packages = packages.count()
 
     lines = yum_stdout.split("\n")
 
     # Filter lines that only have whitespace or are blank
     lines = (line for line in yum_stdout.split("\n") if line.strip())
+
     # Filter informational lines that don't have to do with available packages
     lines = (line for line in lines if not line.endswith("is an installed security update"))
-    packages = [line for line ingit lines if not line.endswith("is the currently running version")]
+    packages = [line for line in lines if not line.endswith("is the currently running version")]
 
     total_packages = len(packages)
 
     if total_packages > 0:
-        logger.critical(
+        logger.warning(
             "The system has %s packages to be updated. "
             "To proceed with the conversion, update the packages on your system by executing the following step:\n\n"
             "Run: yum update -y\n" % total_packages
@@ -484,25 +484,38 @@ def check_package_updates():
         logger.info("System is up-to-date.")
 
 
-def check_installed_kernel_version():
-    """Check if the installed kernel is behind or at the same version in yum repos"""
-    logger.task("Prepare: Checking if the installed kernel version is the most recent.")
+def is_loaded_kernel_latest():
+    """Check if the loaded kernel is behind or of the same version as in yum repos."""
+    logger.task("Prepare: Checking if the loaded kernel version is the most recent.")
 
     # The latest kernel version on repo
-    repoquery_output, _ = run_subprocess('repoquery --qf "%{version}-%{release}.%{arch}" kernel')
+    repoquery_output, _ = run_subprocess('repoquery -q --qf "%{BUILDTIME}\\t%{VERSION}-%{RELEASE}" kernel')
 
-    # The installed kernel version
+    packages = repoquery_output.split("\n")
+
+    # Convert to an list splitted with buildtime and kernel version
+    packages = [str(line).split("\t")[1] for line in packages if line.strip()]
+
+    # Sort out for the most recent kernel with reverse order
+    # In case `repoquery` returns more than one kernel in the output
+    # We display the latest one to the user.
+    most_recent_kernel = sorted(packages, reverse=True)[0]
+
+    # The loaded kernel version
     uname_output, _ = run_subprocess("uname -r")
 
-    match = LooseVersion(repoquery_output) > LooseVersion(uname_output)
+    loaded_kernel = uname_output.rsplit(".", 1)[0]
 
-    if match:
-        logger.critical(
-            "The current kernel version installed is behind the latest version.\n"
-            " Latest kernel version: %s"
-            " Current installed kernel: %s\n"
-            "To proceed with the conversion, update the kernel version by executing the following step:\n\n"
-            "yum install kernel-%s -y\n" % (repoquery_output, uname_output, repoquery_output)
-        )
+    match = compare_package_versions(most_recent_kernel, str(loaded_kernel))
+
+    if match == 0:
+        logger.info("Kernel currently loaded is at the latest version.")
     else:
-        logger.info("Kernel currently installed is at the latest version.")
+        logger.critical(
+            "The current kernel version loaded is different from the latest version in your repos.\n"
+            " Latest kernel version: %s\n"
+            " Current loaded kernel: %s\n"
+            "To proceed with the conversion, update the kernel version by executing the following step:\n\n"
+            "1. yum install kernel-%s -y\n"
+            "2. reboot" % (most_recent_kernel, loaded_kernel, most_recent_kernel)
+        )
