@@ -35,7 +35,7 @@ from convert2rhel import unit_tests  # Imports unit_tests/__init__.py
 from convert2rhel import pkghandler, pkgmanager, utils
 from convert2rhel.systeminfo import system_info
 from convert2rhel.toolopts import tool_opts
-from convert2rhel.unit_tests import GetLoggerMocked, is_rpm_based_os
+from convert2rhel.unit_tests import GetLoggerMocked, is_rpm_based_os, run_subprocess_side_effect
 
 
 class TestPkgHandler(unit_tests.ExtendedTestCase):
