@@ -26,6 +26,8 @@ def test_check_user_response(convert2rhel):
         c2r.sendcontrol("d")
     assert c2r.exitstatus != 0
 
+    # Run c2r registration with activation key provided
+    # check for user prompt while organization left blank
     with convert2rhel(
         "-y --no-rpm-va --serverurl {} -k {}".format(env.str("RHSM_SERVER_URL"), env.str("RHSM_KEY"))
     ) as c2r:
