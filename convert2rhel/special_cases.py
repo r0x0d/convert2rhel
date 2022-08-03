@@ -101,11 +101,12 @@ def perform_java_openjdk_workaround():
 
 
 def unprotect_shim_x64():
-    """Remove the shim-x64 package yum protection on UEFI-based Oracle Linux 7 systems as it causes a yum traceback.
+    """Remove the shim-x64 package protection on Oracle Linux 7 as it causes yum to traceback.
 
-    The package is protected through the /etc/yum/protected.d/shim-x64.conf file. It is installed with the
-    Oracle Linux 7 shim-x64 package. The same package on RHEL 7 does not install this file - it's OL specific - no
-    need to add it back after a successful conversion to RHEL.
+    The package is protected through the /etc/yum/protected.d/shim-x64.conf
+    file. It is installed with the Oracle Linux 7 shim-x64 package. The same
+    package on RHEL 7 does not install this file - it's OL specific - no need to
+    add it back after a successful conversion to RHEL.
 
     Related: https://bugzilla.redhat.com/show_bug.cgi?id=2009368
     """
