@@ -57,7 +57,7 @@ on:
         type: string
         required: false
         default: "epel-8-x86_64"
-      distros:
+      matrix:
         type: string
         required: true
       update_pull_request_status:
@@ -74,8 +74,7 @@ jobs:
     name: Schedule integration tests on Testing Farm
     strategy:
       fail-fast: false
-      matrix:
-        distro: ${{ fromJson(inputs.distros) }}
+      matrix: ${{ fromJson(inputs.matrix) }}
     runs-on: ubuntu-latest
     steps:
       - name: Schedule integration testing for ${{ inputs.pull_request_status_name }}
@@ -92,11 +91,11 @@ jobs:
           create_issue_comment: "true"
           update_pull_request_status: ${{ inputs.update_pull_request_status }}
           tmt_plan_regex: ${{ inputs.tmt_plan_regex }}
-          compose: ${{ matrix.distro }}
+          compose: ${{ matrix.compose }}
           arch: ${{ inputs.arch }}
           copr: ${{ inputs.copr }}
           copr_artifacts: ${{ inputs.copr_artifacts }}
-          debug: ${{ secrets.DEBUG }}
+          debug: "true"
           tmt_context: "distro=${{ matrix.distro }}"
           pull_request_status_name: ${{ inputs.pull_request_status_name }}/${{ matrix.distro }}
           environment_settings: ${{ inputs.environment_settings }}
