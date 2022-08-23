@@ -107,3 +107,4 @@ copr-build: rpms
 	$(DOCKER) cp $$($(DOCKER) create $(IMAGE)/centos7rpmbuild):/data/.srpms .
 	$(DOCKER) rm $$($(DOCKER) ps -aq) -f
 	copr-cli --config .copr.conf build --nowait @oamg/convert2rhel .srpms/*
+
