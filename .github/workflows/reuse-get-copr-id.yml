@@ -15,8 +15,6 @@ jobs:
     outputs:
       artifacts: ${{ steps.gen_artifacts.outputs.artifacts }}
     steps:
-      - uses: actions/checkout@v3
-
       - name: Install necessary deps
         id: deps_install
         run: sudo apt-get install -y libkrb5-dev
