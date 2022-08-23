@@ -43,3 +43,5 @@ msg-template='[{msg_id} {symbol}] {msg} File: {path}, line {line}, in {obj}'
 
 # Maximum number of characters on a single line.
 max-line-length=120
+
+
