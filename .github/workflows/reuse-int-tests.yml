@@ -96,7 +96,7 @@ jobs:
           arch: ${{ inputs.arch }}
           copr: ${{ inputs.copr }}
           copr_artifacts: ${{ inputs.copr_artifacts }}
-          debug: ${{ secrets.DEBUG }}
+          debug: "true"
           tmt_context: "distro=${{ matrix.distro }}"
           pull_request_status_name: ${{ inputs.pull_request_status_name }}/${{ matrix.distro }}
           environment_settings: ${{ inputs.environment_settings }}
