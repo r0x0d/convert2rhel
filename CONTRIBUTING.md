@@ -13,7 +13,9 @@ contributions to this repository.
 2. The code should follow linting from pylint.
 3. All commits should have passed the pre-commit checks.
 4. Don't change code that is not related to your issue/ticket, open a new
-   issue/ticket if that's the case.
+   issue/ticket if that's the ca
+   
+   se.
 
 ### Working with GitHub
 
