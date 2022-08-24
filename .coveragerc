@@ -13,3 +13,4 @@ source =
 fail_under = 80
 skip_covered = True
 show_missing = True
+afds
