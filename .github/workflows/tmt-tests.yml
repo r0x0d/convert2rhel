@@ -25,7 +25,7 @@ jobs:
         uses: r0x0d/wait-for-ci-checks@main
         id: status_check
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: "${{ github.event.pull_request.head.sha }}"
           checkNames: "rpm-build:epel-7-x86_64;rpm-build:epel-8-x86_64"
     if: |
       github.event.pull_request
@@ -59,7 +59,8 @@ jobs:
       tmt_plan_regex: "^(.*tier0)"
       matrix: ${{ needs.convert_distros_to_matrix.outputs.matrix_epel7 }}
       pull_request_status_name: "epel-7-tier0"
-      git_ref: "refs/pull/${{ github.event.number }}/head"
+      git_ref: "refs/pull/600/head"
+      pr_head_sha: "${{ github.event.pull_request.head.sha }}"
     secrets: inherit
 
   call_workflow_integration_tests_epel_8_tier0:
@@ -70,7 +71,8 @@ jobs:
       tmt_plan_regex: "^(.*tier0)"
       matrix: ${{ needs.convert_distros_to_matrix.outputs.matrix_epel8 }}
       pull_request_status_name: "epel-8-tier0"
-      git_ref: "refs/pull/${{ github.event.number }}/head"
+      git_ref: "refs/pull/600/head"
+      pr_head_sha: "${{ github.event.pull_request.head.sha }}"
     secrets: inherit
 
   # Tier 1 integration tests
@@ -83,7 +85,8 @@ jobs:
       tmt_plan_regex: "^(.*tier1)"
       matrix: ${{ needs.convert_distros_to_matrix.outputs.matrix_epel7 }}
       pull_request_status_name: "epel-7-tier1"
-      git_ref: "refs/pull/${{ github.event.number }}/head"
+      git_ref: "refs/pull/600/head"
+      pr_head_sha: "${{ github.event.pull_request.head.sha }}"
     secrets: inherit
 
   call_workflow_integration_tests_epel_8_tier1:
@@ -94,5 +97,6 @@ jobs:
       tmt_plan_regex: "^(.*tier1)"
       matrix: ${{ needs.convert_distros_to_matrix.outputs.matrix_epel8 }}
       pull_request_status_name: "epel-8-tier1"
-      git_ref: "refs/pull/${{ github.event.number }}/head"
+      git_ref: "refs/pull/600/head"
+      pr_head_sha: "${{ github.event.pull_request.head.sha }}"
     secrets: inherit
