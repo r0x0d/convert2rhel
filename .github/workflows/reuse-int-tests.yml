@@ -68,6 +68,10 @@ on:
         type: string
         required: false
         default: "main"
+      pre_head_sha:
+        type: string
+        required: true
+        default: ''
 
 jobs:
   reusable_workflow_job:
@@ -78,7 +82,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Schedule integration testing for ${{ inputs.pull_request_status_name }}
-        uses: sclorg/testing-farm-as-github-action@v1.2.11
+        # This is the hash commit that introduces the ability to pass a SHA
+        # commit without needing to checkout the code first.
+        uses: sclorg/testing-farm-as-github-action@0021d134bdb2b6e372b1ad12b3f528810d833c59
         with:
           # required
           api_url: ${{ secrets.TF_ENDPOINT }}
@@ -86,6 +92,7 @@ jobs:
           git_url: "https://github.com/oamg/convert2rhel"
           git_ref: ${{ inputs.git_ref }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          pre_head_sha: ${{ inputs.pre_head_sha }}
           # optional
           tf_scope: "private"
           create_issue_comment: "true"
