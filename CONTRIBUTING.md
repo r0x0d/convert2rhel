@@ -4,7 +4,7 @@ The following is a set of guidelines for contributing to Convert2RHEL codebase,
 which are hosted in the [OAMG Organization](https://github.com/oamg) on GitHub.
 These are mostly guidelines, not rules.
 
-## What should I know before I get started?
+## What should I know before I get started? fgh
 
 Below are a list of things to keep in mind when developing and submitting
 contributions to this repository.
