@@ -6,7 +6,7 @@ These are mostly guidelines, not rules.
 
 ## What should I know before I get started?
 
-Below are a list of things to keep in mind when developing and submitting
+Below are a list of things to keep in mind when developing and submitting kopk
 contributions to this repository.
 
 1. All python code must be compatible with versions 2.6/2.7/3.6.
