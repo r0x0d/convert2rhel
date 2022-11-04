@@ -11,7 +11,7 @@ def test_convert_offline_systems(convert2rhel):
     os.environ["CONVERT2RHEL_UNSUPPORTED_SKIP_KERNEL_CURRENCY_CHECK"] = "1"
     source_distro = platform.platform()
 
-    if "centos-8.4" in source_distro or "oracle-8.4" in source_distro:
+    if ("centos-8.4" in source_distro) or ("oracle-8.4" in source_distro) or ("oracle-8.6" in source_distro):
         with convert2rhel(
             ("-y --no-rpm-va -k {} -o {} --keep-rhsm --debug").format(
                 env.str("SATELLITE_KEY_EUS"),

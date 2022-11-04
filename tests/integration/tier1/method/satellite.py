@@ -16,7 +16,7 @@ def test_satellite_conversion(shell, convert2rhel):
 
     source_distro = platform.platform()
 
-    if "centos-8.4" in source_distro or "oracle-8.4" in source_distro:
+    if ("centos-8.4" in source_distro) or ("oracle-8.4" in source_distro) or ("oracle-8.6" in source_distro):
         with convert2rhel(
             ("-y --no-rpm-va -k {} -o {} --debug").format(
                 env.str("SATELLITE_KEY_EUS"),
