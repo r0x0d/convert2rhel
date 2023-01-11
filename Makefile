@@ -16,6 +16,8 @@ IMAGE_ORG ?= oamg
 IMAGE_PREFIX ?= convert2rhel
 PYTHON ?= python3
 PIP ?= pip3
+PYLINT ?= pylint
+PYLINT_ARGS ?=
 VENV ?= .venv3
 PRE_COMMIT ?= pre-commit
 SHOW_CAPTURE ?= no
@@ -72,7 +74,7 @@ tests-locally: install
 	. $(VENV)/bin/activate; pytest $(PYTEST_ARGS)
 
 lint-locally: install
-	. $(VENV)/bin/activate; ./scripts/run_lint.sh
+	. $(VENV)/bin/activate; $(PYLINT) --rcfile=.pylintrc $(PYLINT_ARGS) convert2rhel/
 
 clean:
 	@rm -rf build/ dist/ *.egg-info .pytest_cache/ .build-images
@@ -107,10 +109,10 @@ endif
 	touch $@
 
 lint: images
-	@$(DOCKER) run $(DOCKER_RM_CONTAINER) -v $(shell pwd):/data:Z $(IMAGE)-centos8 bash -c "scripts/run_lint.sh"
+	@$(DOCKER) run $(DOCKER_RM_CONTAINER) -v $(shell pwd):/data:Z $(IMAGE)-centos8 bash -c "$(PYLINT) --rcfile=.pylintrc $(PYLINT_ARGS) convert2rhel/"
 
 lint-errors: images
-	@$(DOCKER) run $(DOCKER_RM_CONTAINER) -v $(shell pwd):/data:Z $(IMAGE)-centos8 bash -c "scripts/run_lint.sh --errors-only"
+	@$(DOCKER) run $(DOCKER_RM_CONTAINER) -v $(shell pwd):/data:Z $(IMAGE)-centos8 bash -c "run_lint.sh --errors-only"
 
 tests: tests7 tests8
 
