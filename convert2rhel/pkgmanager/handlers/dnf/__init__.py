@@ -67,7 +67,10 @@ class DnfTransactionHandler(TransactionHandlerBase):
         # Ref: https://dnf.readthedocs.io/en/latest/conf_ref.html#keepcache-label
         self._base.conf.keepcache = True
 
-        # Override the original depsolver callback to use our own.
+        # Currently, the depsolver callback associated with `_ds_callback` is
+        # just a bypass. We are overriding this property to use our own
+        # depsolver callback, that will output useful information of what is
+        # going in with the packages in the transaction.
         self._base._ds_callback = DependencySolverProgressIndicatorCallback()
 
     def _enable_repos(self):
@@ -121,7 +124,7 @@ class DnfTransactionHandler(TransactionHandlerBase):
         :raises SystemExit: If we fail to resolve the dependencies or
             downloading the packages.
         """
-        loggerinst.info("Resolving the dependencies of the packages in the dnf transaction set.")
+        loggerinst.info("Resolving the dependencies of the packages in the dnf transaction set.\n")
         try:
             self._base.resolve(allow_erasing=True)
         except pkgmanager.exceptions.DepsolveError as e:
