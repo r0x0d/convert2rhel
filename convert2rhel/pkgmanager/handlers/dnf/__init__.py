@@ -102,7 +102,7 @@ class DnfTransactionHandler(TransactionHandlerBase):
         """
         original_os_pkgs = get_system_packages_for_replacement()
 
-        loggerinst.info("\nAdding %s packages to the dnf transaction set.", system_info.name)
+        loggerinst.info("Adding %s packages to the dnf transaction set.", system_info.name)
 
         for pkg in original_os_pkgs:
             self._base.upgrade(pkg_spec=pkg)
@@ -124,14 +124,14 @@ class DnfTransactionHandler(TransactionHandlerBase):
         :raises SystemExit: If we fail to resolve the dependencies or
             downloading the packages.
         """
-        loggerinst.info("Resolving the dependencies of the packages in the dnf transaction set.\n")
+        loggerinst.info("Resolving the dependencies of the packages in the dnf transaction set.")
         try:
             self._base.resolve(allow_erasing=True)
         except pkgmanager.exceptions.DepsolveError as e:
             loggerinst.debug("Got the following exception message: %s" % e)
             loggerinst.critical("Failed to resolve dependencies in the transaction.")
 
-        loggerinst.info("\nDownloading the packages that were added to the dnf transaction set.")
+        loggerinst.info("Downloading the packages that were added to the dnf transaction set.")
         try:
             self._base.download_packages(self._base.transaction.install_set, PackageDownloadCallback())
         except pkgmanager.exceptions.DownloadError as e:
@@ -149,11 +149,9 @@ class DnfTransactionHandler(TransactionHandlerBase):
 
         if validate_transaction:
             self._base.conf.tsflags.append("test")
-            loggerinst.info(
-                "\nValidating the dnf transaction set, no modifications to the system will happen this time."
-            )
+            loggerinst.info("Validating the dnf transaction set, no modifications to the system will happen this time.")
         else:
-            loggerinst.info("\nReplacing %s packages. This process may take some time to finish." % system_info.name)
+            loggerinst.info("Replacing %s packages. This process may take some time to finish." % system_info.name)
 
         try:
             self._base.do_transaction(display=TransactionDisplayCallback())
@@ -165,9 +163,9 @@ class DnfTransactionHandler(TransactionHandlerBase):
             loggerinst.critical("Failed to validate the dnf transaction.")
 
         if validate_transaction:
-            loggerinst.info("\nSuccessfully validated the dnf transaction set.\n")
+            loggerinst.info("Successfully validated the dnf transaction set.")
         else:
-            loggerinst.info("\nSystem packages replaced successfully.")
+            loggerinst.info("System packages replaced successfully.")
 
     def run_transaction(self, validate_transaction=False):
         """Run the dnf transaction.
