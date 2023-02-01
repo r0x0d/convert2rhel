@@ -850,20 +850,34 @@ def test_write_json_object_to_file(data, expected, tmpdir):
 
 
 class DummyPopenOutput(unit_tests.MockFunction):
-    def __init__(self, output):
+    def __init__(self, output, err_output="", return_code=0):
         self.call_count = 0
         self.output = output
+        self.err_output = err_output
+        self.return_code = return_code
+        self.out_caller = None
 
     def __call__(self, args, stdout, stderr, bufsize):
         return self
 
     @property
     def stdout(self):
+        self.out_caller = "stdout"
+        return self
+
+    @property
+    def stderr(self):
+        self.out_caller = "stderr"
+        self.call_count = 0
         return self
 
     def readline(self):
         try:
-            next_line = self.output[self.call_count]
+            next_line = b""
+            if self.out_caller == "stdout":
+                next_line = self.output[self.call_count]
+            elif self.out_caller == "stderr":
+                next_line = self.err_output[self.call_count]
         except IndexError:
             return b""
 
@@ -874,7 +888,298 @@ class DummyPopenOutput(unit_tests.MockFunction):
         pass
 
     def poll(self):
-        return 0
+        return self.return_code
+
+    def close(self):
+        pass
+
+
+@pytest.mark.parametrize(
+    ("output", "skip_stdout_decode", "expected"),
+    (
+        (DummyPopenOutput([u"test".encode()]), True, b"test"),
+        (DummyPopenOutput([u"testê café".encode("utf-8")]), False, u"testê café"),
+        (DummyPopenOutput([u"testê café".encode("utf-8")]), False, u"testê café"),
+        (DummyPopenOutput([u"test".encode()]), False, "test"),
+    ),
+)
+def test_normalize_subprocess_output(output, skip_stdout_decode, expected):
+    result = utils._normalize_subprocess_output(output.stdout.readline, skip_stdout_decode)
+    assert result == expected
+
+
+class TestRunPipedSubprocess:
+    @pytest.mark.parametrize(
+        ("cmd1", "cmd2", "expected"),
+        (
+            (
+                "echo hi",
+                None,
+                "cmd1 should be a list, not a str.",
+            ),
+            (
+                None,
+                "echo hi",
+                "cmd2 should be a list, not a str.",
+            ),
+        ),
+    )
+    def test_run_piped_subprocess_type_error(self, cmd1, cmd2, expected):
+        with pytest.raises(TypeError, match=expected):
+            utils.run_piped_subprocess(cmd1, cmd2)
+
+    @pytest.mark.parametrize(
+        (
+            "cmd1",
+            "cmd2",
+            "process_stdout",
+            "process_stderr",
+            "output_stdout",
+            "output_stderr",
+            "output_return_code",
+            "expected",
+        ),
+        (
+            pytest.param(
+                ["echo", "test"],
+                ["tail"],
+                [u"test".encode()],
+                [u"".encode()],
+                [u"test".encode()],
+                [u"".encode()],
+                0,
+                ("test", "", 0),
+                id="check-correct-success-output",
+            ),
+            pytest.param(
+                ["echo", "test"],
+                ["tail"],
+                [u"".encode()],
+                [u"test".encode()],
+                [u"".encode()],
+                [u"test".encode()],
+                1,
+                ("", "test", 1),
+                id="check-correct-failure-output",
+            ),
+        ),
+    )
+    def test_run_piped_subprocess(
+        self,
+        cmd1,
+        cmd2,
+        process_stdout,
+        process_stderr,
+        output_stdout,
+        output_stderr,
+        output_return_code,
+        expected,
+        monkeypatch,
+    ):
+        process_mock = DummyPopenOutput(process_stdout, process_stderr)
+        output_mock = DummyPopenOutput(output_stdout, output_stderr, output_return_code)
+
+        monkeypatch.setattr(utils.subprocess, "Popen", mock.Mock(side_effect=[process_mock, output_mock]))
+        out, err, return_code = utils.run_piped_subprocess(cmd1, cmd2)
+
+        assert (out, err, return_code) == expected
+
+    @pytest.mark.parametrize(
+        (
+            "cmd1",
+            "cmd2",
+            "process_stdout",
+            "process_stderr",
+            "output_stdout",
+            "output_stderr",
+            "output_return_code",
+            "expected",
+        ),
+        (
+            (
+                ["echo", "something", "'hi'"],
+                ["cpio", "-i", "--to-stdout"],
+                [u"test".encode()],
+                [u"".encode()],
+                [u"test".encode()],
+                [u"".encode()],
+                0,
+                ("test", "", 0),
+            ),
+        ),
+    )
+    def test_run_piped_subprocess_print_cmd(
+        self,
+        cmd1,
+        cmd2,
+        process_stdout,
+        process_stderr,
+        output_stdout,
+        output_stderr,
+        output_return_code,
+        expected,
+        caplog,
+        monkeypatch,
+    ):
+        process_mock = DummyPopenOutput(process_stdout, process_stderr)
+        output_mock = DummyPopenOutput(output_stdout, output_stderr, output_return_code)
+
+        monkeypatch.setattr(utils.subprocess, "Popen", mock.Mock(side_effect=[process_mock, output_mock]))
+        out, err, return_code = utils.run_piped_subprocess(cmd1, cmd2)
+
+        assert (out, err, return_code) == expected
+        assert "Calling command '%s | %s'" % (" ".join(cmd1), " ".join(cmd2)) in caplog.records[-1].message
+
+    @pytest.mark.parametrize(
+        (
+            "cmd1",
+            "cmd2",
+            "process_stdout",
+            "process_stderr",
+            "output_stdout",
+            "output_stderr",
+            "output_return_code",
+            "expected",
+        ),
+        (
+            (
+                ["echo", "something", "'hi'"],
+                ["cpio", "-i", "--to-stdout"],
+                [u"test".encode()],
+                [u"".encode()],
+                [u"test".encode()],
+                [u"".encode()],
+                0,
+                ("test", "", 0),
+            ),
+        ),
+    )
+    def test_run_piped_subprocess_print_output(
+        self,
+        cmd1,
+        cmd2,
+        process_stdout,
+        process_stderr,
+        output_stdout,
+        output_stderr,
+        output_return_code,
+        expected,
+        caplog,
+        monkeypatch,
+    ):
+        process_mock = DummyPopenOutput(process_stdout, process_stderr)
+        output_mock = DummyPopenOutput(output_stdout, output_stderr, output_return_code)
+
+        monkeypatch.setattr(utils.subprocess, "Popen", mock.Mock(side_effect=[process_mock, output_mock]))
+        out, err, return_code = utils.run_piped_subprocess(cmd1, cmd2, print_output=True)
+
+        assert (out, err, return_code) == expected
+        assert "Output: %s" % out in caplog.records[-1].message
+
+    @pytest.mark.parametrize(
+        (
+            "cmd1",
+            "cmd2",
+            "process_stdout",
+            "process_stderr",
+            "output_stdout",
+            "output_stderr",
+            "output_return_code",
+            "expected",
+        ),
+        (
+            (
+                ["echo", "something", "'hi'"],
+                ["cpio", "-i", "--to-stdout"],
+                [u"".encode()],
+                [u"error".encode()],
+                [u"".encode()],
+                [u"error".encode()],
+                1,
+                ("", "error", 1),
+            ),
+        ),
+    )
+    def test_run_piped_subprocess_print_error(
+        self,
+        cmd1,
+        cmd2,
+        process_stdout,
+        process_stderr,
+        output_stdout,
+        output_stderr,
+        output_return_code,
+        expected,
+        caplog,
+        monkeypatch,
+    ):
+        process_mock = DummyPopenOutput(process_stdout, process_stderr)
+        output_mock = DummyPopenOutput(output_stdout, output_stderr, output_return_code)
+
+        monkeypatch.setattr(utils.subprocess, "Popen", mock.Mock(side_effect=[process_mock, output_mock]))
+        out, err, return_code = utils.run_piped_subprocess(cmd1, cmd2, print_error=True)
+
+        assert (out, err, return_code) == expected
+        assert "Error: %s" % err in caplog.records[-1].message
+
+    @pytest.mark.parametrize(
+        (
+            "cmd1",
+            "cmd2",
+            "process_stdout",
+            "process_stderr",
+            "output_stdout",
+            "output_stderr",
+            "output_return_code",
+            "skip_stdout_decode",
+            "expected",
+        ),
+        (
+            (
+                ["echo", "something", "'hi'"],
+                ["cpio", "-i", "--to-stdout"],
+                [u"test".encode()],
+                [u"".encode()],
+                [u"test".encode()],
+                [u"".encode()],
+                0,
+                True,
+                (b"test", "", 0),
+            ),
+            (
+                ["echo", "something", "'hi'"],
+                ["cpio", "-i", "--to-stdout"],
+                [u"testê café".encode("utf-8")],
+                [u"".encode("utf-8")],
+                [u"testê café".encode("utf-8")],
+                [u"".encode("utf-8")],
+                0,
+                False,
+                (u"testê café", "", 0),
+            ),
+        ),
+    )
+    def test_run_piped_subprocess_skip_stdout_decode(
+        self,
+        cmd1,
+        cmd2,
+        process_stdout,
+        process_stderr,
+        output_stdout,
+        output_stderr,
+        output_return_code,
+        skip_stdout_decode,
+        expected,
+        caplog,
+        monkeypatch,
+    ):
+        process_mock = DummyPopenOutput(process_stdout, process_stderr)
+        output_mock = DummyPopenOutput(output_stdout, output_stderr, output_return_code)
+
+        monkeypatch.setattr(utils.subprocess, "Popen", mock.Mock(side_effect=[process_mock, output_mock]))
+        out, err, return_code = utils.run_piped_subprocess(cmd1, cmd2, skip_stdout_decode=skip_stdout_decode)
+
+        assert (out, err, return_code) == expected
 
 
 def test_run_subprocess_env(monkeypatch):
