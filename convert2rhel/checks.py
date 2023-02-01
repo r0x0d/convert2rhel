@@ -38,7 +38,13 @@ from convert2rhel.pkghandler import (
 from convert2rhel.repo import get_hardcoded_repofiles_dir
 from convert2rhel.systeminfo import system_info
 from convert2rhel.toolopts import tool_opts
-from convert2rhel.utils import ask_to_continue, get_file_content, run_subprocess, store_content_to_file
+from convert2rhel.utils import (
+    ask_to_continue,
+    get_file_content,
+    run_piped_subprocess,
+    run_subprocess,
+    store_content_to_file,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +80,12 @@ COMPATIBLE_KERNELS_VERS = {
     7: "3.10.0",
     8: "4.18.0",
 }
+
+VMLINUZ_FILEPATH = "/boot/vmlinuz-%s"
+"""The path to the vmlinuz file in a system."""
+
+INITRAMFS_FILEPATH = "/boot/initramfs-%s.img"
+"""The path to the initramfs image in a system."""
 
 # Python 2.6 compatibility.
 # This code is copied from Pthon-3.10's functools module,
@@ -823,3 +835,88 @@ def check_dbus_is_running():
         "Could not find a running DBus Daemon which is needed to register with subscription manager.\n"
         "Please start dbus using `systemctl start dbus` or (on CentOS Linux 6), `service messagebus start`"
     )
+
+
+def _verify_initramfs_file(latest_installed_kernel):
+    """Internal function to handle the verification for initramfs file.
+
+    :param latest_installed_kernel: The version corresponding to the latest installed kernel on the system.
+    :type latest_installed_kernel: str
+    :return: A boolean to determinate if there was any errors with the file or not.
+    :rtype: bool
+    """
+    initramfs_file = INITRAMFS_FILEPATH % latest_installed_kernel
+
+    if not os.path.exists(initramfs_file):
+        return False
+
+    logger.info("Checking if the %s file is not corrupted.", initramfs_file)
+    _, err, return_code = run_piped_subprocess(
+        cmd1=["zcat", initramfs_file],
+        cmd2=["cpio", "-i", "--to-stdout"],
+        skip_stdout_decode=True,
+    )
+
+    if return_code != 0:
+        # NOTE(r0x0d): `out` will probably output a lot of binary
+        # information, might not be a good idea to log it out.
+        logger.debug("stderr output: %s", err)
+        return False
+
+    return True
+
+
+def _verify_vmlinuz_file(latest_installed_kernel):
+    """Internal function to handle the verification for vmlinuz file.
+
+    :param latest_installed_kernel: The version corresponding to the latest installed kernel on the system.
+    :type latest_installed_kernel: str
+    :return: A boolean to determinate if there was any errors with the file or not.
+    :rtype: bool
+    """
+    vmlinuz_file = VMLINUZ_FILEPATH % latest_installed_kernel
+    if not os.path.exists(vmlinuz_file):
+        return False
+
+    return True
+
+
+def check_kernel_boot_files():
+    """Check if the required kernel files exists and are valid under the boot partition."""
+    # For Oracle/CentOS Linux 8 the `kernel` is just a meta package, instead,
+    # we check for `kernel-core`. This is not true regarding the 7.* releases.
+    kernel_name = "kernel-core" if system_info.version.major >= 8 else "kernel"
+
+    # Either the package is returned or not, this will output return_code = 0,
+    # so, we don't care about chekcing for that here.
+    output, _ = run_subprocess(["rpm", "-q", "--last", kernel_name], print_output=False)
+
+    # We are parsing the latest kernel installed on the system, which at this
+    # point, should be a RHEL kernel. Since we can't get the kernel version from
+    # `uname -r`, as it requires a reboot in order to take place, we are
+    # detecting the latest kernel by using `rpm` and figuring out which was the
+    # latest kernel installed.
+    latest_installed_kernel = output.split("\n")[0].split(" ")[0]
+    latest_installed_kernel = latest_installed_kernel.split("%s-" % kernel_name)[-1]
+    grub2_config_file = grub.get_grub_config_file()
+
+    logger.info("Checking if initiramfs file exists on the system.")
+    initramfs_exists = _verify_initramfs_file(latest_installed_kernel)
+
+    logger.info("Checking if vmlinuz file exists on the system.")
+    vmlinuz_exists = _verify_vmlinuz_file(latest_installed_kernel)
+
+    if not initramfs_exists or not vmlinuz_exists:
+        logger.warning(
+            "Couldn't verify the kernel boot files in the boot partition. This may cause problems during the next boot "
+            "on your system.\nYou may need to free/increase space in your boot partition, after that, in order to fix "
+            "the problem, run the following commands in your terminal:\n"
+            "1. yum reinstall %s-%s -y\n"
+            "2. grub2-mkconfig -o %s\n"
+            "3. reboot",
+            kernel_name,
+            latest_installed_kernel,
+            grub2_config_file,
+        )
+    else:
+        logger.info("Initramfs and vmlinuz files exists and are valid.")

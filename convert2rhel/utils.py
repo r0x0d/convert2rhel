@@ -125,6 +125,123 @@ def restart_system():
         loggerinst.warning("In order to boot the RHEL kernel, restart of the system is needed.")
 
 
+def _normalize_subprocess_output(output, skip_stdout_decode):
+    """Internal function to normalize the output from subprocess.
+
+    .. note::
+        This function will try to handle the case where the output is bytes
+        and not str, but, if the caller requested that the output should not
+        be decoded, then the function will return the data in bytes and not
+        an str.
+
+    :param output: The output of a subprocess call.
+    :type output: bytes
+    :param skip_stdout_decode: Flag to indicate that the output will not be
+        decoded as utf-8. Useful if the function is working with binary outputs.
+    :type skip_stdout_decode: bool
+    :return: A normalized output, either in an string format or in bytes format.
+    :rtype: str | bytes
+    """
+    normalized_output = ""
+    for line in iter(output, b""):
+        if skip_stdout_decode:
+            if not isinstance(normalized_output, bytes):
+                normalized_output = normalized_output.encode()
+
+            normalized_output += line
+        else:
+            normalized_output += line.decode("utf-8")
+
+    return normalized_output
+
+
+def run_piped_subprocess(
+    cmd1, cmd2, stdout=subprocess.PIPE, print_cmd=True, print_output=False, print_error=False, skip_stdout_decode=False
+):
+    """
+    Call the first passed command, and pipe the output to the second command,
+    optionally logging the called command  and its output. Switching off
+    printing the command can be useful in case it contains a password in plain
+    text.
+
+    .. note::
+        Both `cmd1` and `cmd2` should be passed to this function as a list of strings, for example:
+        run_piped_subprocess(
+            cmd1=["rpm", "-q", "--last", "kernel"],
+            cmd2=["head", "-1"],
+        )
+
+    .. note::
+        Do not use `print_output` or `print_error` if the output of the
+        commands passed to the function will output binary data, as this can
+        mess up the log file and even the terminal that Convert2RHEL is
+        running.
+
+    .. example::
+        # Below an example on how to use this function.
+
+        # Will run the command `rpm -q --last kernel | head -1` giving only one result.
+        out, err, return_code = run_piped_subprocess(
+            cmd1=["rpm", "-q", "--last", "kernel"],
+            cmd2=["head", "-1"],
+            print_cmd=True,
+            skip_stdout_decode=True,
+        )
+        print(out) # kernel-6.1.7-200.fc37.x86_64                  Mon 23 Jan 2023 09:08:22 -03
+        print(err) # ''
+        print(return_code) # 0
+
+    :param cmd1: The first command to be executed and that will be piped to the `cmd2`.
+    :type cmd1: list[str]
+    :param cmd2: The command that will take stdin from `cmd1` and will execute on top of that.
+    :type cmd2: list[str]
+    :param stdout: Indicate where to redirect the output of `cmd2`. Defaults to subprocess.PIPE.
+    :type stdout: int
+    :param print_cmd: Flag to determinate if the command will be printed to the terminal. Defaults to True.
+    :type print_cmd: bool
+    :param print_output: Flag to determinate if the stdout output of `cmd1`
+        and `cmd2` will be print to the terminal. Defaults to False.
+    :type print_output: bool
+    :param print_error: Flag to determinate if the stderr output of `cmd1`
+        and `cmd2` will be print to the terminal. Defaults to False.
+    :type print_output: bool
+    :param skip_stdout_decode: Flag to indicate that the output will not be
+        decoded as utf-8. Useful if the function is working with binary outputs.
+    :type skip_stdout_decode: bool
+    :return: A tuple containing the stdout from the second command, stderr (combined) and the return code.
+    :rtype: tuple[bytes, bytes, int] | tuple[str, str, int]
+    :raises TypeError: If `cmd1` or `cmd2` is not an instance of a list.
+    """
+    if isinstance(cmd1, str):
+        raise TypeError("cmd1 should be a list, not a str.")
+
+    if isinstance(cmd2, str):
+        raise TypeError("cmd2 should be a list, not a str.")
+
+    if print_cmd:
+        loggerinst.debug("Calling command '%s | %s'", " ".join(hide_secrets(cmd1)), " ".join(hide_secrets(cmd2)))
+
+    # Redirect both `stdout` and `stderr` to the pipe, as in, if it falis or
+    # succeed, we will pass over that stream to the next `subprocess` call,
+    # which can then execute the command with the stream, either being `stdout`
+    # or `stderr`.
+    process = subprocess.Popen(cmd1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = subprocess.Popen(cmd2, stdin=process.stdout, stdout=stdout, stderr=subprocess.PIPE)
+    process.stdout.close()
+
+    out = _normalize_subprocess_output(output.stdout.readline, skip_stdout_decode)
+    err = _normalize_subprocess_output(output.stderr.readline, skip_stdout_decode)
+
+    if print_output:
+        loggerinst.debug("Output: %s", out.rstrip("\n"))
+
+    if print_error:
+        loggerinst.debug("Error: %s", err.rstrip("\n"))
+
+    return_code = output.poll()
+    return (out, err, return_code)
+
+
 def run_subprocess(cmd, print_cmd=True, print_output=True):
     """Call the passed command and optionally log the called command (print_cmd=True) and its
     output (print_output=True). Switching off printing the command can be useful in case it contains

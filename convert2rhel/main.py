@@ -132,9 +132,11 @@ def main():
         loggerinst.task("Final: Remove temporary folder %s" % utils.TMP_DIR)
         utils.remove_tmp_dir()
 
-        breadcrumbs.breadcrumbs.finish_collection(success=True)
+        loggerinst.task("Final: Checking for kernel boot files")
+        checks.check_kernel_boot_files()
 
         loggerinst.task("Final: Updating RHSM custom facts")
+        breadcrumbs.breadcrumbs.finish_collection(success=True)
         subscription.update_rhsm_custom_facts()
 
         loggerinst.info("\nConversion successful!\n")
