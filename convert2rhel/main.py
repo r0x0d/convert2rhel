@@ -74,14 +74,9 @@ def main():
         gather_system_info()
         prepare_system()
 
-        ### FIXME: This should be expected to either succeed or fail.  Need to look for the return
-        ### value and act upon it.
-        system_checks()
-
-        ### FIXME: After talking with mbocek, let's merge this in with the actions framework
-        pre_ponr_changes()
-
-        post_ponr_changes()
+        process_phase = ConversionPhase.PRE_PONR_CHANGES
+        actions.run_actions()
+        ### FIXME: Need to implement the command line arg to do this
 
         ### Port the code below into pre_ponr_changes(), rollback(), or post_ponr_changes().
 
@@ -93,10 +88,6 @@ def main():
         repo.backup_varsdir()
 
         ### End calls that should be put into pre_ponr_changes(), rollback(), or post_ponr_changes()
-
-        # begin conversion process
-        process_phase = ConversionPhase.PRE_PONR_CHANGES
-        # pre_ponr_conversion()
 
         if os.getenv("CONVERT2RHEL_EXPERIMENTAL_ANALYSIS", None):
             # TODO: Include report before rollback
@@ -112,6 +103,7 @@ def main():
         loggerinst.warning("********************************************************")
         utils.ask_to_continue()
 
+        ### FIXME: These definitely go into post_ponr_changes():
         process_phase = ConversionPhase.POST_PONR_CHANGES
         post_ponr_conversion()
 
@@ -219,12 +211,7 @@ def prepare_system():
     pkgmanager.clean_yum_metadata()
 
 
-def system_checks():
-    # check the system prior the conversion (possible inhibit)
-    pass
-
-
-def pre_ponr_changes():
+def post_ponr_changes():
     pass
 
 

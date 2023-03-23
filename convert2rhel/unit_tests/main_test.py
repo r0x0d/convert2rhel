@@ -232,6 +232,7 @@ def test_main(monkeypatch):
     os_release_file_mock = mock.Mock()
     backup_varsdir_mock = mock.Mock()
     backup_yum_repos_mock = mock.Mock()
+    run_actions_mock = mock.Mock()
     clear_versionlock_mock = mock.Mock()
     ask_to_continue_mock = mock.Mock()
     post_ponr_conversion_mock = mock.Mock()
@@ -257,6 +258,7 @@ def test_main(monkeypatch):
     monkeypatch.setattr(redhatrelease.os_release_file, "backup", os_release_file_mock)
     monkeypatch.setattr(repo, "backup_yum_repos", backup_yum_repos_mock)
     monkeypatch.setattr(repo, "backup_varsdir", backup_varsdir_mock)
+    monkeypatch.setattr(actions, "run_actions", run_actions_mock)
     monkeypatch.setattr(utils, "ask_to_continue", ask_to_continue_mock)
     monkeypatch.setattr(main, "post_ponr_conversion", post_ponr_conversion_mock)
     monkeypatch.setattr(system_info, "modified_rpm_files_diff", rpm_files_diff_mock)
@@ -280,6 +282,7 @@ def test_main(monkeypatch):
     assert os_release_file_mock.call_count == 1
     assert backup_yum_repos_mock.call_count == 1
     assert backup_varsdir_mock.call_count == 1
+    assert run_actions_mock.call_count == 1
     assert clear_versionlock_mock.call_count == 1
     assert ask_to_continue_mock.call_count == 1
     assert post_ponr_conversion_mock.call_count == 1
@@ -325,6 +328,7 @@ def test_main_rollback_pre_ponr_changes_phase(monkeypatch):
     print_system_information_mock = mock.Mock()
     collect_early_data_mock = mock.Mock()
     clean_yum_metadata_mock = mock.Mock()
+    run_actions_mock = mock.Mock()
     system_release_file_mock = mock.Mock()
     os_release_file_mock = mock.Mock()
     backup_yum_repos_mock = mock.Mock()
@@ -345,6 +349,7 @@ def test_main_rollback_pre_ponr_changes_phase(monkeypatch):
     monkeypatch.setattr(breadcrumbs, "collect_early_data", collect_early_data_mock)
     monkeypatch.setattr(pkghandler, "clear_versionlock", clear_versionlock_mock)
     monkeypatch.setattr(pkgmanager, "clean_yum_metadata", clean_yum_metadata_mock)
+    monkeypatch.setattr(actions, "run_actions", run_actions_mock)
     monkeypatch.setattr(redhatrelease.system_release_file, "backup", system_release_file_mock)
     monkeypatch.setattr(redhatrelease.os_release_file, "backup", os_release_file_mock)
     monkeypatch.setattr(repo, "backup_yum_repos", backup_yum_repos_mock)
@@ -361,6 +366,7 @@ def test_main_rollback_pre_ponr_changes_phase(monkeypatch):
     assert resolve_system_info_mock.call_count == 1
     assert collect_early_data_mock.call_count == 1
     assert clean_yum_metadata_mock.call_count == 1
+    assert run_actions_mock.call_count == 1
     assert system_release_file_mock.call_count == 1
     assert os_release_file_mock.call_count == 1
     assert backup_yum_repos_mock.call_count == 1
@@ -380,6 +386,7 @@ def test_main_rollback_post_ponr_changes_phase(monkeypatch, caplog):
     print_system_information_mock = mock.Mock()
     collect_early_data_mock = mock.Mock()
     clean_yum_metadata_mock = mock.Mock()
+    run_actions_mock = mock.Mock()
     system_release_file_mock = mock.Mock()
     os_release_file_mock = mock.Mock()
     backup_yum_repos_mock = mock.Mock()
@@ -402,6 +409,7 @@ def test_main_rollback_post_ponr_changes_phase(monkeypatch, caplog):
     monkeypatch.setattr(breadcrumbs, "collect_early_data", collect_early_data_mock)
     monkeypatch.setattr(pkghandler, "clear_versionlock", clear_versionlock_mock)
     monkeypatch.setattr(pkgmanager, "clean_yum_metadata", clean_yum_metadata_mock)
+    monkeypatch.setattr(actions, "run_actions", run_actions_mock)
     monkeypatch.setattr(redhatrelease.system_release_file, "backup", system_release_file_mock)
     monkeypatch.setattr(redhatrelease.os_release_file, "backup", os_release_file_mock)
     monkeypatch.setattr(repo, "backup_yum_repos", backup_yum_repos_mock)
@@ -420,6 +428,7 @@ def test_main_rollback_post_ponr_changes_phase(monkeypatch, caplog):
     assert resolve_system_info_mock.call_count == 1
     assert collect_early_data_mock.call_count == 1
     assert clean_yum_metadata_mock.call_count == 1
+    assert run_actions_mock.call_count == 1
     assert system_release_file_mock.call_count == 1
     assert os_release_file_mock.call_count == 1
     assert backup_yum_repos_mock.call_count == 1

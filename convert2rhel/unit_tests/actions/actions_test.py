@@ -23,8 +23,30 @@ import re
 from collections import defaultdict
 
 import pytest
+import six
+
+
+six.add_move(six.MovedModule("mock", "mock", "unittest.mock"))
+from six.moves import mock
 
 from convert2rhel import actions
+from convert2rhel.actions import STATUS_CODE
+
+
+class _ActionForTesting(actions.Action):
+    """Fake Action class where we can set all of the attributes as we like."""
+
+    id = None
+
+    def __init__(self, **kwargs):
+        super(_ActionForTesting, self).__init__()
+        for attr_name, attr_value in kwargs.items():
+            setattr(self, attr_name, attr_value)
+
+    # We have to override run() because run() is an abstract method
+    # but we don't do anything with it in the unittests
+    def run(self):  # pylint: disable=useless-parent-delegation
+        super(_ActionForTesting, self).run()
 
 
 class TestGetActions:
@@ -32,11 +54,17 @@ class TestGetActions:
 
     def test_get_actions_smoketest(self):
         """Test that there are no errors loading the Actions we ship."""
-        computed_actions = actions.get_actions(actions.__path__, actions.__name__ + ".")
+        computed_actions = []
 
         # Is this method of finding how many Action plugins we ship too hacky?
         filesystem_detected_actions_count = 0
         for rootdir, dirnames, filenames in os.walk(os.path.dirname(actions.__file__)):
+            for directory in dirnames:
+                # Add to the actions that the production code finds here as it is non-recursive
+                computed_actions.extend(
+                    actions.get_actions([os.path.join(rootdir, directory)], "%s.%s." % (actions.__name__, directory))
+                )
+
             for filename in (os.path.join(rootdir, filename) for filename in filenames):
                 if filename.endswith(".py") and not filename.endswith("/__init__.py"):
                     with open(filename) as f:
@@ -84,6 +112,540 @@ class TestGetActions:
         assert computed_action_names == sorted(expected_action_names)
 
 
+class TestStage:
+    def test_init(self):
+        pass
+
+    def test_check_dependencies(self):
+        # Run check_dependencies on the real Actions at least once so that we know what we ship
+        # works
+        pass
+
+    def test_run(self):
+        pass
+
+
+class TestResolveActionOrder:
+    @pytest.mark.parametrize(
+        ("potential_actions", "ordered_result"),
+        (
+            ([], []),
+            ([_ActionForTesting(id="One")], ["One"]),
+            ([_ActionForTesting(id="One"), _ActionForTesting(id="Two", dependencies=("One",))], ["One", "Two"]),
+            ([_ActionForTesting(id="Two"), _ActionForTesting(id="One", dependencies=("Two",))], ["Two", "One"]),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                    _ActionForTesting(id="Three", dependencies=("Two",)),
+                    _ActionForTesting(id="Four", dependencies=("Three",)),
+                ],
+                ["One", "Two", "Three", "Four"],
+            ),
+            # Multiple dependencies (Slight differences in order to show
+            # that order of deps and Actions doesn't matter.  The sort is
+            # still stable.
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                    _ActionForTesting(
+                        id="Three",
+                        dependencies=(
+                            "Two",
+                            "One",
+                        ),
+                    ),
+                    _ActionForTesting(id="Four", dependencies=("Three",)),
+                ],
+                ["One", "Two", "Three", "Four"],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                    _ActionForTesting(id="Three", dependencies=("Two",)),
+                    _ActionForTesting(
+                        id="Four",
+                        dependencies=(
+                            "One",
+                            "Three",
+                        ),
+                    ),
+                ],
+                ["One", "Two", "Three", "Four"],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                    _ActionForTesting(id="Three", dependencies=("Two",)),
+                    _ActionForTesting(
+                        id="Four",
+                        dependencies=(
+                            "Three",
+                            "One",
+                        ),
+                    ),
+                ],
+                ["One", "Two", "Three", "Four"],
+            ),
+        ),
+    )
+    def test_one_solution(self, potential_actions, ordered_result):
+        """Resolve order when only one solutions satisfies dependencies."""
+        computed_actions = actions.resolve_action_order(potential_actions)
+        computed_action_ids = [action.id for action in computed_actions]
+        assert computed_action_ids == ordered_result
+
+    # Note: Each of these sets of Actions have multiple solutions but
+    # the stable sort assurance should guarantee that the order is only a
+    # single one of these.  The alternates are commented out to show they
+    # aren't really wrong, but we expect that the stable sort will mean we
+    # always get the order that is uncommented.  If the algorithm changes
+    # between releases, we may want to allow any of the alternates as well.
+    @pytest.mark.parametrize(
+        ("potential_actions", "possible_orders"),
+        (
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                    _ActionForTesting(id="Three", dependencies=("One",)),
+                    _ActionForTesting(id="Four", dependencies=("Three",)),
+                ],
+                (
+                    # ["One", "Two", "Three", "Four"],
+                    ["One", "Three", "Two", "Four"],
+                ),
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                    _ActionForTesting(id="Three", dependencies=("One",)),
+                    _ActionForTesting(id="Four", dependencies=("One",)),
+                ],
+                (
+                    # ["One", "Two", "Three", "Four"],
+                    # ["One", "Two", "Four", "Three"],
+                    # ["One", "Three", "Two", "Four"],
+                    # ["One", "Three", "Four", "Two"],
+                    # ["One", "Four", "Two", "Three"],
+                    ["One", "Four", "Three", "Two"],
+                ),
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two"),
+                    _ActionForTesting(id="Three", dependencies=("One",)),
+                    _ActionForTesting(id="Four", dependencies=("Two",)),
+                ],
+                (
+                    # ["One", "Two", "Three", "Four"],
+                    ["One", "Two", "Four", "Three"],
+                    # ["One", "Three", "Two", "Four"],
+                    # ["Two", "One", "Three", "Four"],
+                    # ["Two", "One", "Four", "Three"],
+                    # ["Two", "Four", "One", "Three"],
+                ),
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(
+                        id="Two",
+                        dependencies=(
+                            "One",
+                            "Three",
+                        ),
+                    ),
+                    _ActionForTesting(id="Three", dependencies=("One",)),
+                    _ActionForTesting(id="Four", dependencies=("Three",)),
+                ],
+                (
+                    ["One", "Three", "Two", "Four"],
+                    # ["One", "Three", "Four", "Two"],
+                ),
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two"),
+                    _ActionForTesting(id="Three"),
+                ],
+                (
+                    # ["One", "Two", "Three"],
+                    ["One", "Three", "Two"],
+                    # ["Two", "One", "Three"],
+                    # ["Two", "Three", "One"],
+                    # ["Three", "One", "Two"],
+                    # ["Three", "Two", "One"],
+                ),
+            ),
+        ),
+    )
+    def test_multiple_solutions(self, potential_actions, possible_orders):
+        """
+        When multiple solutions exist, the code chooses a single correct solution.
+
+        This test both checks that the order is correct and that the sort is
+        stable (it doesn't change between runs or on different distributionss).
+        """
+        computed_actions = actions.resolve_action_order(potential_actions)
+        computed_action_ids = [action.id for action in computed_actions]
+        assert computed_action_ids in possible_orders
+
+    @pytest.mark.parametrize(
+        ("potential_actions",),
+        (
+            # Dependencies that don't exist
+            (
+                [
+                    _ActionForTesting(id="One", dependencies=("Unknown",)),
+                ],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One", dependencies=("Unknown",)),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                ],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                    _ActionForTesting(id="Two", dependencies=("Unknown",)),
+                ],
+            ),
+            # Circular deps
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("Three",)),
+                    _ActionForTesting(id="Three", dependencies=("Two",)),
+                ],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("Three",)),
+                    _ActionForTesting(id="Three", dependencies=("Four",)),
+                    _ActionForTesting(id="Four", dependencies=("Two",)),
+                ],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One", dependencies=("Three",)),
+                    _ActionForTesting(id="Two", dependencies=("Three",)),
+                    _ActionForTesting(id="Three", dependencies=("Four",)),
+                    _ActionForTesting(id="Four", dependencies=("One",)),
+                ],
+            ),
+        ),
+    )
+    def test_no_solutions(self, potential_actions):
+        """All of these have unsatisfied dependencies."""
+        with pytest.raises(actions.DependencyError):
+            list(actions.resolve_action_order(potential_actions))
+
+    @pytest.mark.parametrize(
+        ("potential", "previous", "ordered_result"),
+        (
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(
+                        id="Two",
+                        dependencies=(
+                            "One",
+                            "Three",
+                        ),
+                    ),
+                    _ActionForTesting(id="Three", dependencies=("One",)),
+                    _ActionForTesting(id="Four", dependencies=("Two",)),
+                ],
+                [
+                    _ActionForTesting(id="Zero"),
+                ],
+                ["Zero", "One", "Three", "Two", "Four"],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("Zero",)),
+                    _ActionForTesting(id="Three", dependencies=("One", "Two")),
+                    _ActionForTesting(id="Four", dependencies=("Three",)),
+                ],
+                [
+                    _ActionForTesting(id="Zero"),
+                ],
+                ["Zero", "One", "Two", "Three", "Four"],
+                # ["Zero", "Two", "One", "Three", "Four"],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One"),
+                    _ActionForTesting(id="Two", dependencies=("One",)),
+                ],
+                [
+                    _ActionForTesting(id="Zero"),
+                    _ActionForTesting(id="Three"),
+                    _ActionForTesting(id="Zed"),
+                ],
+                ["Zero", "Three", "Zed", "One", "Two"],
+                # ["Zero", "Two", "One", "Three", "Four"],
+            ),
+            (
+                [
+                    _ActionForTesting(id="One", dependencies=("Zero",)),
+                    _ActionForTesting(
+                        id="Two",
+                        dependencies=(
+                            "Zero",
+                            "One",
+                        ),
+                    ),
+                ],
+                [
+                    _ActionForTesting(id="Zero"),
+                ],
+                ["Zero", "One", "Two"],
+                # ["Zero", "Two", "One", "Three", "Four"],
+            ),
+        ),
+    )
+    def test_with_previously_resolved_actions(self, potential, previous, ordered_result):
+        computed_actions = actions.resolve_action_order(potential, previously_resolved_actions=previous)
+
+        computed_action_ids = [action.id for action in computed_actions]
+        assert computed_action_ids == ordered_result
+
+    @pytest.mark.parametrize(
+        ("potential", "previous"),
+        (
+            (
+                [_ActionForTesting(id="One", dependencies=("Unknown",))],
+                [
+                    _ActionForTesting(id="Zero"),
+                ],
+            ),
+            (
+                [_ActionForTesting(id="One"), _ActionForTesting(id="Four", dependencies=("Unknown",))],
+                [
+                    _ActionForTesting(id="Zero"),
+                ],
+            ),
+        ),
+    )
+    def test_with_previously_resolved_actions_no_solutions(self, potential, previous):
+        with pytest.raises(actions.DependencyError):
+            list(actions.resolve_action_order(potential, previous))
+
+
+class TestRunActions:
+    @pytest.mark.parametrize(
+        ("action_results", "expected"),
+        (
+            # Only successes
+            (
+                actions.FinishedActions([], [], []),
+                {},
+            ),
+            (
+                actions.FinishedActions(
+                    [
+                        _ActionForTesting(id="One", status=STATUS_CODE["SUCCESS"]),
+                    ],
+                    [],
+                    [],
+                ),
+                {
+                    "One": {"error_id": None, "message": None, "status": STATUS_CODE["SUCCESS"]},
+                },
+            ),
+            (
+                actions.FinishedActions(
+                    [
+                        _ActionForTesting(
+                            id="One", status=STATUS_CODE["WARNING"], error_id="DANGER", message="Warned about danger"
+                        ),
+                    ],
+                    [],
+                    [],
+                ),
+                {
+                    "One": {"error_id": "DANGER", "message": "Warned about danger", "status": STATUS_CODE["WARNING"]},
+                },
+            ),
+            (
+                actions.FinishedActions(
+                    [
+                        _ActionForTesting(id="One", status=STATUS_CODE["WARNING"]),
+                        _ActionForTesting(id="Two", status=STATUS_CODE["SUCCESS"], dependencies=("One",)),
+                        _ActionForTesting(
+                            id="Three",
+                            status=STATUS_CODE["SUCCESS"],
+                            dependencies=(
+                                "One",
+                                "Two",
+                            ),
+                        ),
+                    ],
+                    [],
+                    [],
+                ),
+                {
+                    "One": {"error_id": None, "message": None, "status": STATUS_CODE["WARNING"]},
+                    "Two": {"error_id": None, "message": None, "status": STATUS_CODE["SUCCESS"]},
+                    "Three": {"error_id": None, "message": None, "status": STATUS_CODE["SUCCESS"]},
+                },
+            ),
+            # Single Failures
+            (
+                actions.FinishedActions(
+                    [],
+                    [
+                        _ActionForTesting(id="One", status=STATUS_CODE["ERROR"]),
+                    ],
+                    [],
+                ),
+                {
+                    "One": {"error_id": None, "message": None, "status": STATUS_CODE["ERROR"]},
+                },
+            ),
+            (
+                actions.FinishedActions(
+                    [],
+                    [
+                        _ActionForTesting(id="One", status=STATUS_CODE["FATAL"]),
+                    ],
+                    [],
+                ),
+                {
+                    "One": {"error_id": None, "message": None, "status": STATUS_CODE["FATAL"]},
+                },
+            ),
+            (
+                actions.FinishedActions(
+                    [],
+                    [
+                        _ActionForTesting(id="One", status=STATUS_CODE["OVERRIDABLE"]),
+                    ],
+                    [],
+                ),
+                {
+                    "One": {"error_id": None, "message": None, "status": STATUS_CODE["OVERRIDABLE"]},
+                },
+            ),
+            (
+                actions.FinishedActions(
+                    [],
+                    [],
+                    [
+                        _ActionForTesting(id="One", status=STATUS_CODE["SKIP"]),
+                    ],
+                ),
+                {
+                    "One": {"error_id": None, "message": None, "status": STATUS_CODE["SKIP"]},
+                },
+            ),
+            # Some failures, some successes
+            (
+                actions.FinishedActions(
+                    [
+                        _ActionForTesting(id="One", status=STATUS_CODE["WARNING"]),
+                        _ActionForTesting(id="Four", status=STATUS_CODE["SUCCESS"]),
+                    ],
+                    [
+                        _ActionForTesting(id="Two", status=STATUS_CODE["ERROR"]),
+                    ],
+                    [
+                        _ActionForTesting(id="Three", status=STATUS_CODE["SKIP"]),
+                    ],
+                ),
+                {
+                    "One": {"error_id": None, "message": None, "status": STATUS_CODE["WARNING"]},
+                    "Two": {"error_id": None, "message": None, "status": STATUS_CODE["ERROR"]},
+                    "Three": {"error_id": None, "message": None, "status": STATUS_CODE["SKIP"]},
+                    "Four": {"error_id": None, "message": None, "status": STATUS_CODE["SUCCESS"]},
+                },
+            ),
+        ),
+    )
+    def test_run_actions(self, action_results, expected, monkeypatch):
+        check_deps_mock = mock.Mock()
+        run_mock = mock.Mock(return_value=action_results)
+
+        monkeypatch.setattr(actions.Stage, "check_dependencies", check_deps_mock)
+        monkeypatch.setattr(actions.Stage, "run", run_mock)
+
+        assert actions.run_actions() == expected
+
+    def test_dependency_errors(self, monkeypatch, caplog):
+        check_deps_mock = mock.Mock(side_effect=actions.DependencyError("Failure message"))
+        monkeypatch.setattr(actions.Stage, "check_dependencies", check_deps_mock)
+
+        with pytest.raises(SystemExit):
+            actions.run_actions()
+
+        assert (
+            "Some dependencies were set on Actions but not present in convert2rhel: Failure message"
+            == caplog.records[-1].message
+        )
+
+
+class TestFindFailedActions:
+    @pytest.mark.parametrize(
+        ("results", "failed"),
+        (
+            (
+                {},
+                [],
+            ),
+            (
+                {
+                    "TEST": {"status": STATUS_CODE["SUCCESS"], "error_id": "", "message": ""},
+                },
+                [],
+            ),
+            (
+                {
+                    "GOOD": {"status": STATUS_CODE["SUCCESS"], "error_id": "", "message": ""},
+                    "GOOD2": {"status": STATUS_CODE["SUCCESS"], "error_id": "TWO", "message": "Nothing to see"},
+                },
+                [],
+            ),
+            (
+                {
+                    "GOOD": {"status": STATUS_CODE["WARNING"], "error_id": "AWARN", "message": "Danger"},
+                },
+                [],
+            ),
+            (
+                {
+                    "BAD": {"status": STATUS_CODE["ERROR"], "error_id": "ERROR", "message": "Explosion"},
+                },
+                ["BAD"],
+            ),
+            (
+                {
+                    "BAD": {"status": STATUS_CODE["ERROR"], "error_id": "ERROR", "message": "Explosion"},
+                    "BAD2": {"status": STATUS_CODE["FATAL"], "error_id": "FATAL", "message": "Explosion"},
+                    "BAD3": {"status": STATUS_CODE["OVERRIDABLE"], "error_id": "OVERRIDABLE", "message": "Explosion"},
+                    "BAD4": {"status": STATUS_CODE["SKIP"], "error_id": "SKIP", "message": "Explosion"},
+                    "GOOD": {"status": STATUS_CODE["WARNING"], "error_id": "WARN", "message": "Danger"},
+                    "GOOD2": {"status": STATUS_CODE["SUCCESS"], "error_id": "", "message": "No Error here"},
+                },
+                ["BAD", "BAD2", "BAD3", "BAD4"],
+            ),
+        ),
+    )
+    def test_find_failed_actions(self, results, failed):
+        assert sorted(actions.find_failed_actions(results)) == sorted(failed)
+
+
 class TestActions:
     """Tests across all of the Actions we ship."""
 
@@ -101,11 +663,3 @@ class TestActions:
                 dupe_actions.append("%s is present in more than one location: %s" % (action_id, ", ".join(locations)))
 
         assert not dupe_actions, "\n".join(dupe_actions)
-
-
-class TestResolveActionOrder:
-    pass
-
-
-class TestRunActions:
-    pass

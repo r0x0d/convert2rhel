@@ -13,7 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__metaclass__ = type
+
+
 import abc
+import collections
 import importlib
 import itertools
 import logging
@@ -21,6 +25,7 @@ import os
 import os.path
 import pkgutil
 import re
+import traceback
 
 from functools import cmp_to_key, wraps
 
@@ -37,7 +42,7 @@ from convert2rhel.pkghandler import (
 from convert2rhel.repo import get_hardcoded_repofiles_dir
 from convert2rhel.systeminfo import system_info
 from convert2rhel.toolopts import tool_opts
-from convert2rhel.utils import ask_to_continue, get_file_content, run_subprocess
+from convert2rhel.utils import ask_to_continue, format_sequence_as_message, get_file_content, run_subprocess
 
 
 logger = logging.getLogger(__name__)
@@ -68,7 +73,11 @@ LINK_PREVENT_KMODS_FROM_LOADING = "https://access.redhat.com/solutions/41278"
 #:
 #: :SUCCESS: no problem.
 #: :WARNING: the problem is just a warning displayed to the user. (unused,
-#:      warnings are currently emitted directly from the Action)
+#:      warnings are currently emitted directly from the Action).
+#: :SKIP: the action could not be run because a dependent Action failed.
+#:      Actions should not return this. :func:`get_actions` will set this
+#:      when it determines that an Action cannot be run due to dependencies
+#:      having failed.
 #: :OVERRIDABLE: the error caused convert2rhel to fail but the user has
 #:      the option to ignore the check in a future run.
 #: :ERROR: the error caused convert2rhel to fail the conversion, but further
@@ -78,9 +87,12 @@ LINK_PREVENT_KMODS_FROM_LOADING = "https://access.redhat.com/solutions/41278"
 #: .. warning:: Do not change the numeric value of these statuses once they
 #:      have been in a public release as external tools may be depending on
 #:      the value.
+#: .. warning:: Actions should not set a status to ``SKIP``.  The code which
+#:      runs the Actions will set this.
 STATUS_CODE = {
     "SUCCESS": 0,
     "WARNING": 300,
+    "SKIP": 450,
     "OVERRIDABLE": 600,
     "ERROR": 900,
     "FATAL": 1200,
@@ -114,6 +126,40 @@ def _action_defaults_to_success(func):
 _NO_USER_VALUE = object()
 
 
+class ActionError(Exception):
+    """Raised for errors related to the Action framework."""
+
+
+class DependencyError(ActionError):
+    """
+    Raised when unresolved dependencies are encountered.
+
+    Their are two non-standard attributes.
+
+    :attr:`unresolved_actions` is a list of dependent actions which were
+    not found.
+
+    :attr:`resolved_actions` is a list of dependent actions which were
+    found.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(DependencyError, self).__init__(*args, **kwargs)
+        self.unresolved_actions = kwargs.pop("unresolved_actions", [])
+        self.resolved_actions = kwargs.pop("resolved_actions", [])
+
+
+#: Contains Actions which have run, separated into categories by status.
+#:
+#: :param successes: Actions which have run successfully
+#: :type: Sequence
+#: :param failures: Actions which have failed
+#: :type: Sequence
+#: :param skips: Actions which have been skipped because a dependency failed
+#: :type: Sequence
+FinishedActions = collections.namedtuple("FinishedActions", ("successes", "failures", "skips"))
+
+
 @six.add_metaclass(abc.ABCMeta)
 class Action:
     """Base class for writing a check."""
@@ -137,7 +183,7 @@ class Action:
         """
 
     #: Override dependencies with a Sequence that has other :class:`Action`s
-    #: that must be run before this one.
+    #: :attr:`Action.id`s that must be run before this one.
     dependencies = ()
 
     def __init__(self):
@@ -150,6 +196,7 @@ class Action:
         self.status = None
         self.message = None
         self.error_id = None
+        self._has_run = False
 
     @_action_defaults_to_success
     @abc.abstractmethod
@@ -164,6 +211,10 @@ class Action:
             display to the user) or make additional changes to return an error
             instead.
         """
+        if self._has_run:
+            raise ActionError("Action %s has already run" % self.id)
+
+        self._has_run = True
 
     def set_result(self, status=_NO_USER_VALUE, error_id=_NO_USER_VALUE, message=_NO_USER_VALUE):
         """
@@ -190,9 +241,9 @@ def get_actions(actions_path, prefix):
     """
     Determine the list of actions that exist at a path.
 
-    :param actions_path: Filesystem path to the directory in which the
+    :param actions_path: List of paths to the directory in which the
         Actions may live.
-    :type actions_path: str
+    :type actions_path: list
     :param prefix: Python dotted notation leading up to the Action.
     :type prefix: str
     :returns: A list of Action subclasses which existed at the given path.
@@ -205,7 +256,7 @@ def get_actions(actions_path, prefix):
         successful_actions = []
         failed_actions = []
 
-        action_classes = get_actions(system_checks.__file__,
+        action_classes = get_actions(system_checks.__path__,
                                      system_checks.__name__ + ".")
         for action in action_classes:
             action.run()
@@ -213,6 +264,10 @@ def get_actions(actions_path, prefix):
                 successful_actions.append(action)
             else:
                 failed_actions.append(action)
+
+    .. seealso:: :func:`pkgutil.iter_modules`
+        Consult :func:`pkgutil.iter_modules` for more information on
+        actions_path and prefix which we pass verbatim to that function.
     """
     actions = []
 
@@ -230,63 +285,199 @@ def get_actions(actions_path, prefix):
     return actions
 
 
-def resolve_action_order(potential_actions, failed_actions):
+class Stage:
+    def __init__(self, stage_name, task_header=None, next_stage=None):
+        self.stage_name = stage_name
+        self.task_header = task_header if task_header else stage_name
+        self.next_stage = next_stage
+        self._has_run = False
+
+        python_package = importlib.import_module("convert2rhel.actions.%s" % self.stage_name)
+        self.actions = get_actions(python_package.__path__, python_package.__name__ + ".")
+
+    def check_dependencies(self, previous_stage_actions=None):
+        """
+        Make sure dependencies of this Stage and previous stages are satisfied.
+
+        :raises DependencyError: when there is an unresolvable dependency in
+            the set of actions.
+        """
+        # We want to throw an exception if one of the actions fails to resolve
+        # its deps.  We don't care about the return value here.
+        actions_so_far = list(resolve_action_order(self.actions))
+
+        if self.next_stage:
+            self.next_stage.check_dependencies(actions_so_far)
+
+    def run(self, successes=None, failures=None, skips=None):
+        """
+        Run all the actions in Stage and other linked Stages.
+
+        :keyword successes: Actions which have already run and succeeded.
+        :type: Sequence
+        :keyword failures: Actions which have already run and failed.
+        :type: Sequence
+        :return: 2-tuple consisting of two lists.  One with Actions that
+            have succeeded and one of Actions that have failed.  These
+            lists contain the Actions passed in via successes and failures
+            in addition to any that were run in this :class`Stage`.
+
+        :rtype: FinishedActions
+        .. note:: Success is currently defined as an action whose status after
+            running is WARNING or better (WARNING or SUCCESS) and
+            failure as worse than WARNING (OVERRIDABLE, ERROR, FATAL)
+        """
+        logger.task("Prepare: %s" % self.task_header)
+
+        if self._has_run:
+            raise ActionError("Stage %s has already run." % self.stage_name)
+
+        # Default values and make copies so we don't overwrite callers' data
+        if successes is None:
+            successes = []
+        else:
+            successes = list(successes)
+
+        if failures is None:
+            failures = []
+        else:
+            failures = list(failures)
+
+        if skips is None:
+            skips = []
+        else:
+            skips = list(skips)
+
+        for action_class in resolve_action_order(self.actions):
+            # Decide if we need to skip because deps have failed
+            failed_deps = [d for d in action_class.dependencies if d not in successes]
+
+            action = action_class()
+
+            if failed_deps:
+                to_be = "was"
+                if len(failed_deps) > 1:
+                    to_be = "were"
+                message = "Skipped because %s %s not successful" % (format_sequence_as_message(failed_deps), to_be)
+
+                action.set_result(status="SKIP", error_id="SKIP", message=message)
+                skips.append(action)
+                continue
+
+            # Run the Action
+            try:
+                action.run()
+            except (Exception, SystemExit) as e:
+                # Uncaught exceptions are handled by constructing a generic
+                # failure message here that should be reported
+                message = (
+                    "Unhandled exception was caught: %s"
+                    "\nPlease file a bug at https://issues.redhat.com/ to have this"
+                    " fixed or a specific error message added."
+                    "\nTraceback: %s" % (e, traceback.format_exc())
+                )
+                action.set_result(status=STATUS_CODE["ERROR"], error_id="UNEXPECTED_ERROR", message=message)
+
+            # Categorize the results
+            if action.status <= STATUS_CODE["WARNING"]:
+                successes.append(action)
+
+            if action.status > STATUS_CODE["WARNING"]:
+                failures.append(action)
+
+        if self.next_stage:
+            successes, failures, skips = self.next_stage.run(successes, failures, skips)
+
+        return FinishedActions(successes, failures, skips)
+
+
+def resolve_action_order(potential_actions, previously_resolved_actions=None):
     """
     Order the Actions according to the order in which they need to run.
 
-    :arg potential_actions: Sequence of Actions which should be run.
-    :arg failed_actions: A set of failed Actions.  resolve_action_order() does not modify this but
-        does expect that its contents will be updated between iterations if there are more
-        failures.
-    :returns: A list of Actions sorted so that all dependent Actions are run before actions which
-        depend on their output.
-    :raises Exception: when it is impossible to satisfy a dependency in an Action.
+    :param potential_actions: Sequence of Actions which we need to find the
+        order of.
+    :type: Sequence
+    :param previously_resolved_actions: Sequence of Actions which have already
+        had been resolved into dependency order.
+    :returns: Iterator of Actions sorted so that all dependent Actions are run
+        before actions which depend on them.
+    :raises DependencyError: when it is impossible to satisfy a dependency in
+        an Action.
+
+    .. note:: The sort is stable but not predictable. The order will be the same
+        as long as the Actions given has not changed.  But adding or subtracting
+        Actions or dependencies can alter the order a lot.
     """
-    previous_number_of_unresolved_actions = len(potential_actions)
+    if previously_resolved_actions is None:
+        previously_resolved_actions = []
+
+    # Sort the potential actions before processing so that the dependency
+    # order is stable. (Always yields the same order if the input and
+    # algorithm has not changed)
+    potential_actions = sorted(potential_actions, key=lambda action: action.id)
+
+    # Pre-seed these variables using Actions which have no dependencies
+    previous_number_of_unresolved_actions = len(potential_actions) + len(previously_resolved_actions)
     unresolved_actions = [action for action in potential_actions if action.dependencies]
-    resolved_actions = [action for action in potential_actions if not action.dependencies]
-    resolved_action_names = set(action.name for action in resolved_actions)
+    resolved_actions = previously_resolved_actions + [action for action in potential_actions if not action.dependencies]
+
+    resolved_action_ids = set()
+    for action in resolved_actions:
+        # Build up the set of resolved_action_ids and yield all the actions
+        # which did not have dependencies
+        resolved_action_ids.add(action.id)
+        yield action
 
     while previous_number_of_unresolved_actions != len(unresolved_actions):
         previous_number_of_unresolved_actions = len(unresolved_actions)
         for action in unresolved_actions[:]:
-            if all(d in resolved_action_names for d in action.dependencies):
+            if all(d in resolved_action_ids for d in action.dependencies):
                 unresolved_actions.remove(action)
-                resolved_action_names.add(action.__name__)
+                resolved_action_ids.add(action.id)
                 resolved_actions.append(action)
                 yield action
 
     if previous_number_of_unresolved_actions != 0:
-        raise Exception(
-            "Unresolvable Dependency in these actions: %s" % ", ".join(action.__name__ for action in unresolved_actions)
+        raise DependencyError(
+            "Unresolvable Dependencies in these actions: %s" % ", ".join(action.id for action in unresolved_actions)
         )
 
 
 def run_actions():
-    potential_actions = get_actions(__path__, __name__)
-    # TODO(abadger): Fix this later
-    actions = resolve_action_order(potential_actions, None)
-    for action in actions:
-        try:
-            action.run()
-        except Exception as e:
-            ### TODO: We need to keep a tree of actions according to dependencies so that we can run
-            # all the actions which do not have failed dependencies.
-            if hasattr(e.error_message):
-                message = e.error_message
-            else:
-                message = str(e)
-                message.append("\nException raised: %s" % e)
-            logger.critical(message)
-    # Each action will have one of the following statuses:
-    # Pass
-    # Fail
-    # Could not run
-    # Not Applicable
-    # Actions and remediations:
-    #   Remediations should live at the console integration level
-    #   But convert2rhel needs to give enough information that the remediation can decide what to
-    #   run
-    #   For instance, if the action can fail for multiple reasons, the code needs to differentiate
-    #   between which failure case caused this.
-    #
+    pre_ponr_changes = Stage("pre_ponr_changes", "Making recoverable changes")
+    system_checks = Stage("system_checks", "Check whether system is ready for conversion", pre_ponr_changes)
+
+    try:
+        system_checks.check_dependencies()
+    except DependencyError as e:
+        # We want to fail early if dependencies are not properly set.  This
+        # way we should fail in testing before release.
+        logger.critical("Some dependencies were set on Actions but not present in convert2rhel: %s" % e)
+
+    results = system_checks.run()
+
+    # Format results as a dictionary:
+    # {"$Action_id": {"status": int,
+    #                 "error_id": "$error_id",
+    #                 "message": "" or "$message"},
+    # }
+    formatted_results = {}
+    for action in itertools.chain(*results):
+        formatted_results[action.id] = {"status": action.status, "error_id": action.error_id, "message": action.message}
+    return formatted_results
+
+
+def find_failed_actions(results):
+    """
+    Process results of run_actions for Actions which abort conversion.
+
+    :param results: Results dictionary as returned by :func:`run_actions`
+    :type results: Mapping
+    :returns: List of actions which cause the conversion to stop. Empty list
+        if there were no failures.
+    :rtype: Sequence
+    """
+    failed_actions = [a[0] for a in results.items() if a[1]["status"] > STATUS_CODE["WARNING"]]
+
+    return failed_actions
