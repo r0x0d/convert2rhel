@@ -75,8 +75,7 @@ def main():
         prepare_system()
 
         process_phase = ConversionPhase.PRE_PONR_CHANGES
-        actions.run_actions()
-        ### FIXME: Need to implement the command line arg to do this
+        pre_conversion_results = actions.run_actions()
 
         ### Port the code below into pre_ponr_changes(), rollback(), or post_ponr_changes().
 
@@ -89,9 +88,21 @@ def main():
 
         ### End calls that should be put into pre_ponr_changes(), rollback(), or post_ponr_changes()
 
+        # FIXME: Write a nicely formatted report here.
+        # Write to the screen for this release
+        # Also write to a json formatted file for the next release.
+
         if os.getenv("CONVERT2RHEL_EXPERIMENTAL_ANALYSIS", None):
-            # TODO: Include report before rollback
             rollback()
+
+        # Print a summary of the failures
+        # TODO: Might not be needed once we have the report implemented
+        pre_conversion_failures = actions.find_failed_actions(pre_conversion_results)
+        if pre_conversion_failures:
+            message = "The following actions which are required to convert" " have failed:\n  %s" % "\n  ".join(
+                pre_conversion_failures
+            )
+            loggerinst.critical(message)
 
         loggerinst.warning("********************************************************")
         loggerinst.warning("The tool allows rollback of any action until this point.")
