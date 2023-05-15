@@ -447,6 +447,7 @@ _NO_USER_VALUE = object()
 def assert_actions_result(instance, status=_NO_USER_VALUE, error_id=_NO_USER_VALUE, message=_NO_USER_VALUE):
     """Helper function to assert result set by Actions Framework."""
 
+    print("MESSAGE", instance.message)
     if status != _NO_USER_VALUE:
         assert instance.status == STATUS_CODE[status]
 
