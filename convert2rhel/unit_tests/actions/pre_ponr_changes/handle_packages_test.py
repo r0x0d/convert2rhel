@@ -15,6 +15,8 @@
 
 __metaclass__ = type
 
+import os
+
 import pytest
 import six
 
@@ -55,19 +57,56 @@ def test_list_third_party_packages(list_third_party_packages_instance, monkeypat
     monkeypatch.setattr(pkghandler, "get_third_party_pkgs", unit_tests.GetInstalledPkgsWFingerprintsMocked())
     monkeypatch.setattr(pkghandler, "format_pkg_info", PrintPkgInfoMocked(["shim", "ruby", "pytest"]))
     monkeypatch.setattr(system_info, "name", "Centos7")
+
+    list_third_party_packages_instance.run()
+    unit_tests.assert_actions_result(
+        list_third_party_packages_instance,
+        level="OVERRIDABLE",
+        id="THIRD_PARTY_PACKAGE_DETECTED",
+        message=(
+            "Only packages signed by Centos7 are to be"
+            " replaced. Red Hat support won't be provided"
+            " for the following third party packages:\nshim, ruby, pytest"
+        ),
+    )
+    assert "Only packages signed by" in caplog.records[-1].message
+    assert len(pkghandler.format_pkg_info.pkgs) == 3
+
+
+def test_list_third_party_packages_skip(list_third_party_packages_instance, monkeypatch, caplog):
+    monkeypatch.setattr(pkghandler, "get_third_party_pkgs", unit_tests.GetInstalledPkgsWFingerprintsMocked())
+    monkeypatch.setattr(pkghandler, "format_pkg_info", PrintPkgInfoMocked(["shim", "ruby", "pytest"]))
+    monkeypatch.setattr(system_info, "name", "Centos7")
+    monkeypatch.setattr(
+        os,
+        "environ",
+        {"CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP": 1},
+    )
     expected = set(
         (
             actions.ActionMessage(
                 level="WARNING",
-                id="THIRD_PARTY_PACKAGE_DETECTED",
+                id="THIRD_PARTY_PACKAGE_DETECTED_MESSAGE",
                 message=(
                     "Only packages signed by Centos7 are to be replaced. Red Hat support won't be provided"
                     " for the following third party packages:\nshim, ruby, pytest"
                 ),
             ),
+            actions.ActionMessage(
+                level="WARNING",
+                id="SKIP_THIRD_PARTY_PACKAGE_CHECK",
+                message=(
+                    "Detected 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' environment variable, we will skip "
+                    "the third party package check.\n"
+                    "Beware, this could leave your system in a broken state."
+                ),
+            ),
         )
     )
     list_third_party_packages_instance.run()
+    print(expected)
+    print(caplog.records[-1].message)
+    print(list_third_party_packages_instance.messages)
     assert expected.issuperset(list_third_party_packages_instance.messages)
     assert expected.issubset(list_third_party_packages_instance.messages)
     assert "Only packages signed by" in caplog.records[-1].message
