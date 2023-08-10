@@ -83,6 +83,7 @@ _STATUS_NAME_FROM_CODE = dict((value, key) for key, value in STATUS_CODE.items()
 #: what the results mean
 _STATUS_HEADER = {
     0: "Success (No changes needed)",
+    25: "Informational message",
     51: "Warning (Review and fix if needed)",
     101: "Skip (Could not be checked due to other failures)",
     152: "Overridable (Review and either fix or ignore the failure)",
@@ -225,23 +226,29 @@ class Action:
 
         self._result = action_message
 
-    def set_result(self, level, id=None, message=None):
+    def set_result(self, level, id=None, title=None, description=None, diagnosis=None, remediation=None):
         """
-        Helper method that sets the resulting values for level, id and message.
+        Helper method that sets the resulting values for level, id, title, description, diagnosis and remediation.
 
         :param id: The id to identify the result.
         :type id: str
-        :param level: The status_code of the result .
+        :param level: The status_code of the result.
         :type: level: str
-        :param message: The message to be set.
-        :type message: str | None
+        :param title: The title to be set.
+        :type title: str
+        :param description: The description of the result.
+        :type description: str
+        :param diagnosis: The outline of the issue found.
+        :type diagnosis: str | None
+        :param remediation: The steps that can be taken to resolve the issue.
+        :type remediation: str | None
         """
         if level not in ("ERROR", "OVERRIDABLE", "SKIP", "SUCCESS"):
             raise KeyError("The level of result must be FAILURE, OVERRIDABLE, SKIP, or SUCCESS.")
 
-        self.result = ActionResult(level, id, message)
+        self.result = ActionResult(level, id, title, description, diagnosis, remediation)
 
-    def add_message(self, level, id=None, message=None):
+    def add_message(self, level, id=None, title=None, description=None, diagnosis=None, remediation=None):
         """
         Helper method that adds a new informational message to display to the user.
         The passed in values for level, id and message of a warning or info log message are
@@ -251,10 +258,16 @@ class Action:
         :type id: str
         :param level: The level to be set.
         :type: level: str
-        :param message: The message to be set.
-        :type message: str | None
+        :param title: The title to be set.
+        :type title: str
+        :param description: The description of the message.
+        :type description: str
+        :param diagnosis: The outline of the issue found.
+        :type diagnosis: str | None
+        :param remediation: The steps that can be taken to resolve the issue.
+        :type remediation: str | None
         """
-        msg = ActionMessage(level, id, message)
+        msg = ActionMessage(level, id, title, description, diagnosis, remediation)
         self.messages.append(msg)
 
 
@@ -267,29 +280,48 @@ class ActionMessageBase:
     :type id: str
     :keyword level: The level to be set, defaulting to SUCCESS.
     :type: level: str
-    :keyword message: The message to be set.
-    :type message: str | None
+    :keyword title: The title to be set.
+    :type title: str
+    :keyword description: The description to be set.
+    :type description: str
+    :keyword diagnosis: The diagnosis to be set.
+    :type diagnosis: str | None
+    :keyword remediation: The remediation to be set.
+    :type remediation: str | None
     """
 
-    def __init__(self, level="SUCCESS", id=None, message=""):
+    def __init__(self, level="SUCCESS", id=None, title="", description="", diagnosis="", remediation=""):
         self.id = id
         self.level = STATUS_CODE[level]
-        self.message = message
+        self.title = title
+        self.description = description
+        self.diagnosis = diagnosis
+        self.remediation = remediation
 
     def __eq__(self, other):
-        if self.level == other.level and self.id == other.id and self.message == other.message:
+        if (
+            self.level == other.level  # pylint: disable=too-many-boolean-expressions
+            and self.id == other.id
+            and self.title == other.title
+            or self.description == other.description
+            or self.diagnosis == other.diagnosis
+            or self.remediation == other.remediation
+        ):
             return True
         return False
 
     def __hash__(self):
-        return hash((self.level, self.id, self.message))
+        return hash((self.level, self.id, self.title, self.description, self.diagnosis, self.remediation))
 
     def __repr__(self):
-        return "%s(level=%s, id=%s, message=%s)" % (
+        return "%s(level=%s, id=%s, title=%s, description=%s, diagnosis=%s, remediation=%s)" % (
             self.__class__.__name__,
             _STATUS_NAME_FROM_CODE[self.level],
             self.id,
-            self.message,
+            self.title,
+            self.description,
+            self.diagnosis,
+            self.remediation,
         )
 
     def to_dict(self):
@@ -301,7 +333,10 @@ class ActionMessageBase:
         return {
             "id": self.id,
             "level": self.level,
-            "message": self.message,
+            "title": self.title,
+            "description": self.description,
+            "diagnosis": self.diagnosis,
+            "remediation": self.remediation,
         }
 
 
@@ -310,16 +345,16 @@ class ActionMessage(ActionMessageBase):
     A class that defines the contents and rules for messages set through :meth:`Action.add_message`.
     """
 
-    def __init__(self, level=None, id=None, message=None):
-        if not (id and level and message):
-            raise InvalidMessageError("Messages require id, level and message fields")
+    def __init__(self, level=None, id=None, title=None, description=None, diagnosis=None, remediation=None):
+        if not (id and level and title and description):
+            raise InvalidMessageError("Messages require id, level, title and description fields")
 
         # None of the result status codes are legal as a message.  So we error if any
         # of them were given here.
         if not (STATUS_CODE["SUCCESS"] < STATUS_CODE[level] < STATUS_CODE["SKIP"]):
             raise InvalidMessageError("Invalid level '%s', set for a non-result message" % level)
 
-        super(ActionMessage, self).__init__(level, id, message)
+        super(ActionMessage, self).__init__(level, id, title, description, diagnosis, remediation)
 
 
 class ActionResult(ActionMessageBase):
@@ -327,24 +362,27 @@ class ActionResult(ActionMessageBase):
     A class that defines content and rules for messages set through :meth:`Action.set_result`.
     """
 
-    def __init__(self, level="SUCCESS", id=None, message=""):
+    def __init__(self, level="SUCCESS", id=None, title="", description="", diagnosis="", remediation=""):
 
         if STATUS_CODE[level] >= STATUS_CODE["SKIP"]:
-            if not id and not message:
-                raise InvalidMessageError("Non-success results require an id and a message")
+            if not id and not title and not description:
+                raise InvalidMessageError("Non-success results require an id, title and description")
 
             if not id:
                 raise InvalidMessageError("Non-success results require an id")
 
-            if not message:
-                raise InvalidMessageError("Non-success results require a message")
+            if not title:
+                raise InvalidMessageError("Non-success results require a title")
+
+            if not description:
+                raise InvalidMessageError("Non-success results require a description")
 
         elif STATUS_CODE["SUCCESS"] < STATUS_CODE[level] < STATUS_CODE["SKIP"]:
             raise InvalidMessageError(
                 "Invalid level '%s', the level for result must be SKIP or more fatal or SUCCESS." % level
             )
 
-        super(ActionResult, self).__init__(level, id, message)
+        super(ActionResult, self).__init__(level, id, title, description, diagnosis, remediation)
 
 
 def get_actions(actions_path, prefix):
@@ -497,15 +535,15 @@ class Stage:
                 to_be = "was"
                 if len(failed_deps) > 1:
                     to_be = "were"
-                message = "Skipped because %s %s not successful" % (
+                description = "Skipped because %s %s not successful" % (
                     utils.format_sequence_as_message(failed_deps),
                     to_be,
                 )
 
-                action.set_result(level="SKIP", id="SKIP", message=message)
+                action.set_result(level="SKIP", id="SKIP", title="Skipped action", description=description)
                 skips.append(action)
                 failed_action_ids.add(action.id)
-                logger.error("Skipped %s. %s" % (action.id, message))
+                logger.error("Skipped %s. %s" % (action.id, description))
                 continue
 
             # Run the Action
@@ -514,13 +552,15 @@ class Stage:
             except (Exception, SystemExit) as e:
                 # Uncaught exceptions are handled by constructing a generic
                 # failure message here that should be reported
-                message = (
+                description = (
                     "Unhandled exception was caught: %s\n"
                     "Please file a bug at https://issues.redhat.com/ to have this"
                     " fixed or a specific error message added.\n"
                     "Traceback: %s" % (e, traceback.format_exc())
                 )
-                action.set_result(level="ERROR", id="UNEXPECTED_ERROR", message=message)
+                action.set_result(
+                    level="ERROR", id="UNEXPECTED_ERROR", title="Unhandled exception caught", description=description
+                )
 
             # Categorize the results
             if action.result.level <= STATUS_CODE["WARNING"]:
@@ -529,7 +569,7 @@ class Stage:
 
             if action.result.level > STATUS_CODE["WARNING"]:
                 message = format_action_status_message(
-                    action.result.level, action.id, action.result.id, action.result.message
+                    action.result.level, action.id, action.result.id, action.result.description
                 )
                 logger.error(message)
                 failures.append(action)

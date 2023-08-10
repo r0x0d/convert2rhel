@@ -444,22 +444,34 @@ class GetInstalledPkgsWFingerprintsMocked(MockFunction):
 _NO_USER_VALUE = object()
 
 
-def assert_actions_result(instance, level=_NO_USER_VALUE, id=_NO_USER_VALUE, message=_NO_USER_VALUE):
+def assert_actions_result(
+    instance,
+    level=_NO_USER_VALUE,
+    id=_NO_USER_VALUE,
+    title=_NO_USER_VALUE,
+    description=_NO_USER_VALUE,
+    diagnosis=_NO_USER_VALUE,
+    remediation=_NO_USER_VALUE,
+):
     """Helper function to assert result set by Actions Framework."""
 
     if level != _NO_USER_VALUE:
-        print(instance.result.level)
-        print(STATUS_CODE[level])
         assert instance.result.level == STATUS_CODE[level]
 
     if id != _NO_USER_VALUE:
         assert instance.result.id == id
 
-    if message != _NO_USER_VALUE:
-        print(instance.result.message)
-        print("\n")
-        print(message)
-        assert message in instance.result.message
+    if title != _NO_USER_VALUE:
+        assert title in instance.result.title
+
+    if description != _NO_USER_VALUE:
+        assert description in instance.result.description
+
+    if diagnosis != _NO_USER_VALUE:
+        assert diagnosis in instance.result.diagnosis
+
+    if remediation != _NO_USER_VALUE:
+        assert remediation in instance.result.remediation
 
 
 class EFIBootInfoMocked:
