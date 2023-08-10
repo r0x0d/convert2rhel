@@ -43,7 +43,8 @@ class CustomReposAreValid(actions.Action):
             self.add_message(
                 level="INFO",
                 id="CUSTOM_REPOSITORIES_ARE_VALID_CHECK_SKIP",
-                message="Skipping the check of repositories due to the use of RHSM for the conversion.",
+                title="Skipping the custom repos are valid check",
+                description="Skipping the check of repositories due to the use of RHSM for the conversion.",
             )
             return
 
@@ -56,10 +57,9 @@ class CustomReposAreValid(actions.Action):
             self.set_result(
                 level="ERROR",
                 id="UNABLE_TO_ACCESS_REPOSITORIES",
-                message=(
-                    "Unable to access the repositories passed through the --enablerepo option. "
-                    "For more details, see YUM/DNF output:\n{0}".format(output)
-                ),
+                title="Unable to access repositories",
+                diagnosis="Unable to access the repositories passed through the --enablerepo option.",
+                remediation="For more details, see YUM/DNF output:\n{0}".format(output),
             )
             return
 

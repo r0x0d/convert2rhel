@@ -43,7 +43,8 @@ class PackageUpdates(actions.Action):
             self.add_message(
                 level="INFO",
                 id="PACKAGE_UPDATES_CHECK_SKIP_NO_PUBLIC_REPOSITORIES",
-                message=(
+                title="Skipping the package updates check",
+                diagnosis=(
                     "Skipping the check because there are no publicly available %s %d.%d repositories available."
                     % (system_info.name, system_info.version.major, system_info.version.minor)
                 ),
@@ -57,7 +58,8 @@ class PackageUpdates(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="PACKAGE_UPDATES_CHECK_SKIP_NO_INTERNET",
-                message="Skipping the check as no internet connection has been detected.",
+                title="Skipping the package updates check",
+                description="Skipping the check as no internet connection has been detected.",
             )
             return
 
@@ -80,7 +82,8 @@ class PackageUpdates(actions.Action):
                 self.set_result(
                     level="OVERRIDABLE",
                     id="PACKAGE_UP_TO_DATE_CHECK_FAIL",
-                    message=("%s %s" % (package_up_to_date_error_message, str(e))),
+                    title="Package up to date check fail",
+                    diagnosis=("%s %s" % (package_up_to_date_error_message, str(e))),
                 )
                 return
             skip_package_up_to_date_check_message = (
@@ -90,14 +93,18 @@ class PackageUpdates(actions.Action):
             )
             logger.warning(skip_package_up_to_date_check_message)
             self.add_message(
-                level="WARNING", id="SKIP_PACKAGE_UP_TO_DATE_CHECK", message=skip_package_up_to_date_check_message
+                level="WARNING",
+                id="SKIP_PACKAGE_UP_TO_DATE_CHECK",
+                title="Skipping package up to date check",
+                description=skip_package_up_to_date_check_message,
             )
 
             logger.warning(package_up_to_date_error_message)
             self.add_message(
                 level="WARNING",
                 id="PACKAGE_UP_TO_DATE_CHECK_MESSAGE",
-                message=("%s %s" % (package_up_to_date_error_message, str(e))),
+                title="Package up to date check fail",
+                diagnosis=("%s %s" % (package_up_to_date_error_message, str(e))),
             )
             return
 
@@ -118,7 +125,10 @@ class PackageUpdates(actions.Action):
             if not package_not_up_to_date_skip:
                 logger.warning(package_not_up_to_date_error_message)
                 self.set_result(
-                    level="OVERRIDABLE", id="OUT_OF_DATE_PACKAGES", message=package_not_up_to_date_error_message
+                    level="OVERRIDABLE",
+                    id="OUT_OF_DATE_PACKAGES",
+                    title="Outdated packages detected",
+                    diagnosis=package_not_up_to_date_error_message,
                 )
                 return
 
@@ -127,15 +137,20 @@ class PackageUpdates(actions.Action):
                 "the package up-to-date check.\n"
                 "Beware, this could leave your system in a broken state."
             )
-            print("HI")
             logger.warning(skip_package_not_up_to_date_message)
             self.add_message(
-                level="WARNING", id="SKIP_PACKAGE_NOT_UP_TO_DATE", message=skip_package_not_up_to_date_message
+                level="WARNING",
+                id="SKIP_PACKAGE_NOT_UP_TO_DATE",
+                title="Skipping package not up to date check",
+                description=skip_package_not_up_to_date_message,
             )
 
             logger.warning(package_not_up_to_date_error_message)
             self.add_message(
-                level="WARNING", id="PACKAGE_NOT_UP_TO_DATE_MESSAGE", message=package_not_up_to_date_error_message
+                level="WARNING",
+                id="PACKAGE_NOT_UP_TO_DATE_MESSAGE",
+                title="Outdated packages detected",
+                diagnosis=package_not_up_to_date_error_message,
             )
             return
 

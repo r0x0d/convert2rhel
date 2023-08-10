@@ -51,7 +51,11 @@ class ListThirdPartyPackages(actions.Action):
                 self.set_result(
                     level="OVERRIDABLE",
                     id="THIRD_PARTY_PACKAGE_DETECTED",
-                    message=warning_message,
+                    title="Third party packages detected",
+                    description="Third party packages will not be replaced during the conversion.",
+                    diagnosis=warning_message,
+                    remediation="* You can manually remove the third party packages so the conversion will not be hindered.\n"
+                    "* Check that the packages won't cause issues and set the environment variable 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' to skip this test",
                 )
                 return
 
@@ -61,10 +65,21 @@ class ListThirdPartyPackages(actions.Action):
                 "Beware, this could leave your system in a broken state."
             )
             logger.warning(skip_message)
-            self.add_message(level="WARNING", id="SKIP_THIRD_PARTY_PACKAGE_CHECK", message=skip_message)
+            self.add_message(
+                level="WARNING",
+                id="SKIP_THIRD_PARTY_PACKAGE_CHECK",
+                title="Skipping the third party package check",
+                description=skip_message,
+            )
 
             logger.warning(warning_message)
-            self.add_message(level="WARNING", id="THIRD_PARTY_PACKAGE_DETECTED_MESSAGE", message=warning_message)
+            self.add_message(
+                level="WARNING",
+                id="THIRD_PARTY_PACKAGE_DETECTED_MESSAGE",
+                title="Third party packages detected",
+                description="Third party packages will not be replaced during the conversion.",
+                diagnosis=warning_message,
+            )
             return
         else:
             logger.info("No third party packages installed.")
@@ -92,7 +107,13 @@ class RemoveExcludedPackages(actions.Action):
             # TODO(r0x0d): Places where we raise SystemExit and need to be
             # changed to something more specific.
             #   - When we can't remove a package.
-            self.set_result(level="ERROR", id="EXCLUDED_PACKAGE_REMOVAL_FAILED", message=str(e))
+            self.set_result(
+                level="ERROR",
+                id="EXCLUDED_PACKAGE_REMOVAL_FAILED",
+                title="Failed to removed excluded package",
+                description="The cause of this error is unknown, please look at the diagnosis for more information.",
+                diagnosis=str(e),
+            )
             return
 
         # shows which packages were not removed, if false, all packages were removed
@@ -101,13 +122,15 @@ class RemoveExcludedPackages(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="EXCLUDED_PACKAGES_NOT_REMOVED",
-                message="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
+                title="Excluded packages which could not be removed",
+                diagnosis="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
             )
         else:
             self.add_message(
                 level="INFO",
                 id="EXCLUDED_PACKAGES_REMOVED",
-                message="The following packages were removed: %s" % ", ".join(pkgs_removed),
+                title="Excluded packages that have been removed",
+                diagnosis="The following packages were removed: %s" % ", ".join(pkgs_removed),
             )
 
 
@@ -144,7 +167,13 @@ class RemoveRepositoryFilesPackages(actions.Action):
             # TODO(r0x0d): Places where we raise SystemExit and need to be
             # changed to something more specific.
             #   - When we can't remove a package.
-            self.set_result(level="ERROR", id="REPOSITORY_FILE_PACKAGE_REMOVAL_FAILED", message=str(e))
+            self.set_result(
+                level="ERROR",
+                id="REPOSITORY_FILE_PACKAGE_REMOVAL_FAILED",
+                title="Repository file package removal failure",
+                description="The cause of this error is unknown, please look at the diagnosis for more information.",
+                diagnosis=str(e),
+            )
             return
 
         # shows which packages were not removed, if false, all packages were removed
@@ -153,11 +182,13 @@ class RemoveRepositoryFilesPackages(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="REPOSITORY_FILE_PACKAGES_NOT_REMOVED",
-                message="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
+                title="Repository file packages which could not be removed",
+                diagnosis="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
             )
         else:
             self.add_message(
                 level="INFO",
                 id="REPOSITORY_FILE_PACKAGES_REMOVED",
-                message="The following packages were removed: %s" % ", ".join(pkgs_removed),
+                title="Repository file packages that were removed",
+                diagnosis="The following packages were removed: %s" % ", ".join(pkgs_removed),
             )

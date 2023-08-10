@@ -68,19 +68,20 @@ class RhelCompatibleKernel(actions.Action):
                 self.set_result(
                     level="ERROR",
                     id=e.error_id,
-                    message=(
-                        "The booted kernel version is incompatible with the standard RHEL kernel. "
-                        "Diagnosis message: {0}"
-                        "To proceed with the conversion, boot into a kernel that is available in the {1} {2} base repository"
+                    title="Incompatible booted kernel version",
+                    diagnosis=(
+                        "The booted kernel version is incompatible with the standard RHEL kernel. %s"
+                        % bad_kernel_message
+                    ),
+                    remediation=(
+                        "To proceed with the conversion, boot into a kernel that is available in the {0} {1} base repository"
                         " by executing the following steps:\n\n"
-                        "1. Ensure that the {1} {2} base repository is enabled\n"
+                        "1. Ensure that the {0} {1} base repository is enabled\n"
                         "2. Run: yum install kernel\n"
                         "3. (optional) Run: grubby --set-default "
                         '/boot/vmlinuz-`rpm -q --qf "%{{BUILDTIME}}\\t%{{EVR}}.%{{ARCH}}\\n" kernel | sort -nr | head -1 | cut -f2`\n'
                         "4. Reboot the machine and if step 3 was not applied choose the kernel"
-                        " installed in step 2 manually".format(
-                            bad_kernel_message, system_info.name, system_info.version.major
-                        )
+                        " installed in step 2 manually".format(system_info.name, system_info.version.major)
                     ),
                 )
                 return

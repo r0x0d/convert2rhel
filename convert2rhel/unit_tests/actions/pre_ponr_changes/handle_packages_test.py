@@ -63,7 +63,8 @@ def test_list_third_party_packages(list_third_party_packages_instance, monkeypat
         list_third_party_packages_instance,
         level="OVERRIDABLE",
         id="THIRD_PARTY_PACKAGE_DETECTED",
-        message=(
+        title="Third party packages detected",
+        description=(
             "Only packages signed by Centos7 are to be"
             " replaced. Red Hat support won't be provided"
             " for the following third party packages:\nshim, ruby, pytest"
@@ -87,7 +88,8 @@ def test_list_third_party_packages_skip(list_third_party_packages_instance, monk
             actions.ActionMessage(
                 level="WARNING",
                 id="THIRD_PARTY_PACKAGE_DETECTED_MESSAGE",
-                message=(
+                title="Third party packages detected",
+                description=(
                     "Only packages signed by Centos7 are to be replaced. Red Hat support won't be provided"
                     " for the following third party packages:\nshim, ruby, pytest"
                 ),
@@ -95,7 +97,8 @@ def test_list_third_party_packages_skip(list_third_party_packages_instance, monk
             actions.ActionMessage(
                 level="WARNING",
                 id="SKIP_THIRD_PARTY_PACKAGE_CHECK",
-                message=(
+                title="Skipping the third party package check",
+                description=(
                     "Detected 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' environment variable, we will skip "
                     "the third party package check.\n"
                     "Beware, this could leave your system in a broken state."
@@ -140,7 +143,8 @@ def test_remove_excluded_packages_all_removed(remove_excluded_packages_instance,
             actions.ActionMessage(
                 level="INFO",
                 id="EXCLUDED_PACKAGES_REMOVED",
-                message="The following packages were removed: kernel-core, ruby, shim",
+                title="Excluded packages that have been removed",
+                description="The following packages were removed: kernel-core, ruby, shim",
             ),
         )
     )
@@ -165,7 +169,8 @@ def test_remove_excluded_packages_not_removed(remove_excluded_packages_instance,
             actions.ActionMessage(
                 level="WARNING",
                 id="EXCLUDED_PACKAGES_NOT_REMOVED",
-                message="The following packages were not removed: ruby, shim",
+                title="Excluded packages which could not be removed",
+                description="The following packages were not removed: ruby, shim",
             ),
         )
     )
@@ -197,7 +202,8 @@ def test_remove_excluded_packages_error(remove_excluded_packages_instance, monke
         remove_excluded_packages_instance,
         level="ERROR",
         id="EXCLUDED_PACKAGE_REMOVAL_FAILED",
-        message="Raising SystemExit",
+        title="Failed to removed excluded package",
+        description="Raising SystemExit",
     )
 
 
@@ -214,7 +220,8 @@ def test_remove_repository_files_packages_all_removed(remove_repository_files_pa
             actions.ActionMessage(
                 level="INFO",
                 id="REPOSITORY_FILE_PACKAGES_REMOVED",
-                message="The following packages were removed: kernel-core, ruby, shim",
+                title="Repository file packages that were removed",
+                description="The following packages were removed: kernel-core, ruby, shim",
             ),
         )
     )
@@ -240,7 +247,8 @@ def test_remove_repository_files_packages_not_removed(remove_repository_files_pa
             actions.ActionMessage(
                 level="WARNING",
                 id="REPOSITORY_FILE_PACKAGES_NOT_REMOVED",
-                message="The following packages were not removed: ruby, shim",
+                title="Repository file packages which could not be removed",
+                description="The following packages were not removed: ruby, shim",
             ),
         )
     )
@@ -276,5 +284,6 @@ def test_remove_repository_files_packages_error(remove_repository_files_packages
         remove_repository_files_packages_instance,
         level="ERROR",
         id="REPOSITORY_FILE_PACKAGE_REMOVAL_FAILED",
-        message="Raising SystemExit",
+        title="Repository file package removal failure",
+        description="Raising SystemExit",
     )

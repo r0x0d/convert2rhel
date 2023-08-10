@@ -41,14 +41,17 @@ class Efi(actions.Action):
             self.set_result(
                 level="ERROR",
                 id="NON_x86_64",
-                message="Only x86_64 systems are supported for UEFI conversions.",
+                title="None x86_64 system detected",
+                description="Only x86_64 systems are supported for UEFI conversions.",
             )
             return
         if not os.path.exists("/usr/sbin/efibootmgr"):
             self.set_result(
                 level="ERROR",
                 id="EFIBOOTMGR_NOT_FOUND",
-                message="Install efibootmgr to continue converting the UEFI-based system.",
+                title="EFI boot manager not found",
+                diagnosis="The EFI boot manager tool - efibootmgr could not be found on your system",
+                remediation="Install efibootmgr to continue converting the UEFI-based system.",
             )
             return
         if grub.is_secure_boot():
@@ -56,10 +59,9 @@ class Efi(actions.Action):
             self.set_result(
                 level="ERROR",
                 id="SECURE_BOOT_DETECTED",
-                message=(
-                    "The conversion with secure boot is currently not possible.\n"
-                    "To disable it, follow the instructions available in this article: https://access.redhat.com/solutions/6753681"
-                ),
+                title="Secure boot has been detected",
+                diagnosis="The conversion with secure boot is currently not possible.",
+                remediation="To disable secure boot, follow the instructions available in this article: https://access.redhat.com/solutions/6753681",
             )
             return
 
@@ -68,7 +70,13 @@ class Efi(actions.Action):
         try:
             efiboot_info = grub.EFIBootInfo()
         except grub.BootloaderError as e:
-            self.set_result(level="ERROR", id="BOOTLOADER_ERROR", message=str(e))
+            self.set_result(
+                level="ERROR",
+                id="BOOTLOADER_ERROR",
+                title="Bootloader error detected",
+                description="An unknown bootloader error occurred, please look at the diagnosis for more information",
+                diagnosis=str(e),
+            )
             return
 
         if not efiboot_info.entries[efiboot_info.current_bootnum].is_referring_to_file():
@@ -81,7 +89,8 @@ class Efi(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="UEFI_BOOTLOADER_MISMATCH",
-                message=(
+                title="UEFI bootloader mismatch",
+                description=(
                     "The current UEFI bootloader '%s' is not referring to any binary UEFI"
                     " file located on local EFI System Partition (ESP)." % efiboot_info.current_bootnum
                 ),

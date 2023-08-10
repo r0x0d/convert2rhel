@@ -63,7 +63,8 @@ class Convert2rhelLatest(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="CONVERT2RHEL_LATEST_CHECK_SKIP_NO_INTERNET",
-                message="Skipping the check because no internet connection has been detected.",
+                title="Skipping convert2rhel latest version check",
+                description="Skipping the check because no internet connection has been detected.",
             )
             return
 
@@ -99,7 +100,8 @@ class Convert2rhelLatest(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="CONVERT2RHEL_LATEST_CHECK_SKIP",
-                message=(
+                title="Skipping convert2rhel latest version check",
+                description=(
                     "Couldn't check if the current installed Convert2RHEL is the latest version.\n"
                     "repoquery failed with the following output:\n%s" % (raw_output_convert2rhel_versions)
                 ),
@@ -180,11 +182,9 @@ class Convert2rhelLatest(actions.Action):
                     self.add_message(
                         level="WARNING",
                         id="DEPRECATED_ENVIRONMENT_VARIABLE",
-                        message=(
-                            "You are using the deprecated 'CONVERT2RHEL_UNSUPPORTED_VERSION'"
-                            " environment variable.  Please switch to 'CONVERT2RHEL_ALLOW_OLDER_VERSION'"
-                            " instead."
-                        ),
+                        title="Deprecated environment variable detected",
+                        diagnosis="You are using the deprecated 'CONVERT2RHEL_UNSUPPORTED_VERSION'",
+                        remediation="Please switch to the 'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable instead",
                     )
                 logger.warning(
                     "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
@@ -194,7 +194,8 @@ class Convert2rhelLatest(actions.Action):
                 self.add_message(
                     level="WARNING",
                     id="ALLOW_OLDER_VERSION_ENVIRONMENT_VARIABLE",
-                    message=(
+                    title="Outdated convert2rhel version detected",
+                    description=(
                         "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                         "'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable detected, continuing conversion"
                         % (installed_convert2rhel_version, latest_available_version[1])
@@ -211,7 +212,8 @@ class Convert2rhelLatest(actions.Action):
                     self.add_message(
                         level="WARNING",
                         id="OUTDATED_CONVERT2RHEL_VERSION",
-                        message=(
+                        title="Outdated convert2rhel version detected",
+                        description=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                             "We encourage you to update to the latest version."
                             % (installed_convert2rhel_version, latest_available_version[1])
@@ -222,12 +224,13 @@ class Convert2rhelLatest(actions.Action):
                     self.set_result(
                         level="ERROR",
                         id="OUT_OF_DATE",
-                        message=(
+                        title="Outdated convert2rhel version detected",
+                        diagnosis=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
-                            "Only the latest version is supported for conversion. If you want to ignore"
-                            " this check, then set the environment variable 'CONVERT2RHEL_ALLOW_OLDER_VERSION=1' to continue."
+                            "Only the latest version is supported for conversion."
                             % (installed_convert2rhel_version, latest_available_version[1])
                         ),
+                        remediation="If you want to ignore this check, then set the environment variable 'CONVERT2RHEL_ALLOW_OLDER_VERSION=1' to continue.",
                     )
                     return
 

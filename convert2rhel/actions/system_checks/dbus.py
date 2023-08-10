@@ -38,7 +38,8 @@ class DbusIsRunning(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="DBUS_IS_RUNNING_CHECK_SKIP",
-                message="Skipping the check because we have been asked not to subscribe this system to RHSM.",
+                title="Skipping the dbus is running check",
+                description="Skipping the check because we have been asked not to subscribe this system to RHSM.",
             )
             return
 
@@ -49,8 +50,7 @@ class DbusIsRunning(actions.Action):
         self.set_result(
             level="ERROR",
             id="DBUS_DAEMON_NOT_RUNNING",
-            message=(
-                "Could not find a running DBus Daemon which is needed to register with subscription manager.\n"
-                "Please start dbus using `systemctl start dbus`"
-            ),
+            title="Dbus daemon is not running",
+            diagnosis="Could not find a running DBus Daemon which is needed to register with subscription manager.",
+            remediation="Please start dbus using `systemctl start dbus`",
         )
