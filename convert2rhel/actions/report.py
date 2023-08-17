@@ -98,11 +98,23 @@ def summary(results, include_all_reports=False, with_colors=True):
     .. note:: Expected results format is as following
         {
             "$Action_id": {
-                "messages" : [{"level": int, "id": "$id", "message": None or "$message"}],
+                "messages" : [
+                    {
+                        "level": int,
+                        "id": "$id",
+                        "title": None or "$title",
+                        "description": None or "$description",
+                        "diagnosis": None or "$diagnosis",
+                        "remediation": None or "$remediation"
+                    }
+                ],
                 "result" : {
                     "level": int,
                     "id": "$id",
-                    "message": "" or "$message"
+                    "title": "" or "$title",
+                    "description": "" or "$description",
+                    "diagnosis": "" or "$diagnosis",
+                    "remediation": "" or "$remediation"
                 }
             },
         }
@@ -146,12 +158,18 @@ def summary(results, include_all_reports=False, with_colors=True):
     for action_id, action_value in results.items():
         combined_results_and_message[(action_id, action_value["result"]["id"])] = {
             "level": action_value["result"]["level"],
-            "message": action_value["result"]["message"],
+            "title": action_value["result"]["title"],
+            "description": action_value["result"]["description"],
+            "diagnosis": action_value["result"]["diagnosis"],
+            "remediation": action_value["result"]["remediation"],
         }
         for message in action_value["messages"]:
             combined_results_and_message[(action_id, message["id"])] = {
                 "level": message["level"],
-                "message": message["message"],
+                "title": message["title"],
+                "description": message["description"],
+                "diagnosis": message["diagnosis"],
+                "remediation": message["remediation"],
             }
 
     if include_all_reports:
@@ -162,7 +180,9 @@ def summary(results, include_all_reports=False, with_colors=True):
             combined_results_and_message, "WARNING", level_for_combined_action_data
         )
     terminal_size = utils.get_terminal_size()
-    word_wrapper = textwrap.TextWrapper(subsequent_indent="    ", width=terminal_size[0], replace_whitespace=False)
+    # word_wrapper = textwrap.TextWrapper(subsequent_indent="    ", width=terminal_size[0], replace_whitespace=False)
+    word_wrapper = textwrap.TextWrapper(subsequent_indent="    ", width=240, replace_whitespace=False)
+
     # Sort the results in reverse order, this way, the most important messages
     # will be on top.
     combined_results_and_message = sorted(combined_results_and_message, key=lambda item: item[1]["level"], reverse=True)
@@ -174,9 +194,7 @@ def summary(results, include_all_reports=False, with_colors=True):
             report.append(format_report_section_heading(combined_result["level"]))
             last_level = combined_result["level"]
 
-        entry = format_action_status_message(
-            combined_result["level"], message_id[0], message_id[1], combined_result["message"]
-        )
+        entry = format_action_status_message(combined_result["level"], message_id[0], message_id[1], combined_result)
         entry = word_wrapper.fill(entry)
         if with_colors:
             entry = colorize(entry, _STATUS_TO_COLOR[combined_result["level"]])
