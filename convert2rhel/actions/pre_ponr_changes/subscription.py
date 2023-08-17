@@ -161,5 +161,6 @@ class SubscribeSystem(actions.Action):
                 level="ERROR",
                 id="MISSING_REGISTRATION_COMBINATION",
                 title="Missing registration combination",
+                description="There are missing registration combinations",
                 diagnosis="One or more combinations were missing for subscription-manager parameters: %s" % e,
             )

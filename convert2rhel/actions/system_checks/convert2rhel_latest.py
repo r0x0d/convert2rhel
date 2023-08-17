@@ -100,8 +100,9 @@ class Convert2rhelLatest(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="CONVERT2RHEL_LATEST_CHECK_SKIP",
-                title="Skipping convert2rhel latest version check",
-                description=(
+                title="Convert2rhel latest version check skip",
+                description="Skipping the convert2hel latest version check",
+                diagnosis=(
                     "Couldn't check if the current installed Convert2RHEL is the latest version.\n"
                     "repoquery failed with the following output:\n%s" % (raw_output_convert2rhel_versions)
                 ),
@@ -182,7 +183,8 @@ class Convert2rhelLatest(actions.Action):
                     self.add_message(
                         level="WARNING",
                         id="DEPRECATED_ENVIRONMENT_VARIABLE",
-                        title="Deprecated environment variable detected",
+                        title="Deprecated environment variable",
+                        description="A deprecated environment variable has been detected",
                         diagnosis="You are using the deprecated 'CONVERT2RHEL_UNSUPPORTED_VERSION'",
                         remediation="Please switch to the 'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable instead",
                     )
@@ -195,7 +197,8 @@ class Convert2rhelLatest(actions.Action):
                     level="WARNING",
                     id="ALLOW_OLDER_VERSION_ENVIRONMENT_VARIABLE",
                     title="Outdated convert2rhel version detected",
-                    description=(
+                    description="An outdated convert2rhel version has been detected",
+                    diagnosis=(
                         "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                         "'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable detected, continuing conversion"
                         % (installed_convert2rhel_version, latest_available_version[1])
@@ -213,7 +216,8 @@ class Convert2rhelLatest(actions.Action):
                         level="WARNING",
                         id="OUTDATED_CONVERT2RHEL_VERSION",
                         title="Outdated convert2rhel version detected",
-                        description=(
+                        description="An outdated convert2rhel version has been detected",
+                        diagnosis=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                             "We encourage you to update to the latest version."
                             % (installed_convert2rhel_version, latest_available_version[1])
@@ -225,6 +229,7 @@ class Convert2rhelLatest(actions.Action):
                         level="ERROR",
                         id="OUT_OF_DATE",
                         title="Outdated convert2rhel version detected",
+                        description="An outdated convert2rhel version has been detected",
                         diagnosis=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                             "Only the latest version is supported for conversion."

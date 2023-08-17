@@ -50,6 +50,7 @@ class Efi(actions.Action):
                 level="ERROR",
                 id="EFIBOOTMGR_NOT_FOUND",
                 title="EFI boot manager not found",
+                description="The EFI boot manager could not be found.",
                 diagnosis="The EFI boot manager tool - efibootmgr could not be found on your system",
                 remediation="Install efibootmgr to continue converting the UEFI-based system.",
             )
@@ -59,7 +60,8 @@ class Efi(actions.Action):
             self.set_result(
                 level="ERROR",
                 id="SECURE_BOOT_DETECTED",
-                title="Secure boot has been detected",
+                title="Secure boot detected",
+                description="Secure boot has been detected.",
                 diagnosis="The conversion with secure boot is currently not possible.",
                 remediation="To disable secure boot, follow the instructions available in this article: https://access.redhat.com/solutions/6753681",
             )
@@ -74,7 +76,7 @@ class Efi(actions.Action):
                 level="ERROR",
                 id="BOOTLOADER_ERROR",
                 title="Bootloader error detected",
-                description="An unknown bootloader error occurred, please look at the diagnosis for more information",
+                description="An unknown bootloader error occurred, please look at the diagnosis for more information.",
                 diagnosis=str(e),
             )
             return
@@ -90,7 +92,8 @@ class Efi(actions.Action):
                 level="WARNING",
                 id="UEFI_BOOTLOADER_MISMATCH",
                 title="UEFI bootloader mismatch",
-                description=(
+                description="There was a UEFI bootloader mismatch.",
+                diagnosis=(
                     "The current UEFI bootloader '%s' is not referring to any binary UEFI"
                     " file located on local EFI System Partition (ESP)." % efiboot_info.current_bootnum
                 ),

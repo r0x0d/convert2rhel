@@ -59,11 +59,9 @@ def test_check_dbus_is_running_not_running(monkeypatch, global_tool_opts, global
         dbus_is_running_action,
         level="ERROR",
         id="DBUS_DAEMON_NOT_RUNNING",
-        message=(
-            "Could not find a running DBus Daemon which is needed to"
-            " register with subscription manager.\nPlease start dbus using `systemctl"
-            " start dbus`"
-        ),
+        description="The Dbus daemon is not running",
+        diagnosis="Could not find a running DBus Daemon which is needed to register with subscription manager.",
+        remediation="Please start dbus using `systemctl start dbus`",
     )
 
 
@@ -78,7 +76,10 @@ def test_check_dbus_is_running_warning_message(
             actions.ActionMessage(
                 level="WARNING",
                 id="DBUS_IS_RUNNING_CHECK_SKIP",
-                message="Skipping the check because we have been asked not to subscribe this system to RHSM.",
+                title="Skipping the dbus is running check",
+                description="Skipping the check because we have been asked not to subscribe this system to RHSM.",
+                diagnosis=None,
+                remediation=None,
             ),
         )
     )

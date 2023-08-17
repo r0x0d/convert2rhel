@@ -107,7 +107,7 @@ def _action_defaults_to_success(func):
         return_value = func(self, *args, **kwargs)
 
         if self.result is None:
-            self.result = ActionResult("SUCCESS")
+            self.result = ActionResult(level="SUCCESS", id="SUCCESS")
 
         return return_value
 
@@ -226,7 +226,7 @@ class Action:
 
         self._result = action_message
 
-    def set_result(self, level, id=None, title=None, description=None, diagnosis=None, remediation=None):
+    def set_result(self, level, id, title=None, description=None, diagnosis=None, remediation=None):
         """
         Helper method that sets the resulting values for level, id, title, description, diagnosis and remediation.
 
@@ -248,7 +248,7 @@ class Action:
 
         self.result = ActionResult(level, id, title, description, diagnosis, remediation)
 
-    def add_message(self, level, id=None, title=None, description=None, diagnosis=None, remediation=None):
+    def add_message(self, level, id, title=None, description=None, diagnosis=None, remediation=None):
         """
         Helper method that adds a new informational message to display to the user.
         The passed in values for level, id and message of a warning or info log message are
@@ -290,7 +290,7 @@ class ActionMessageBase:
     :type remediation: str | None
     """
 
-    def __init__(self, level="SUCCESS", id=None, title="", description="", diagnosis="", remediation=""):
+    def __init__(self, level="SUCCESS", id="SUCCESS", title="", description="", diagnosis="", remediation=""):
         self.id = id
         self.level = STATUS_CODE[level]
         self.title = title
@@ -345,7 +345,7 @@ class ActionMessage(ActionMessageBase):
     A class that defines the contents and rules for messages set through :meth:`Action.add_message`.
     """
 
-    def __init__(self, level=None, id=None, title=None, description=None, diagnosis=None, remediation=None):
+    def __init__(self, level=None, id=None, title=None, description=None, diagnosis="", remediation=""):
         if not (id and level and title and description):
             raise InvalidMessageError("Messages require id, level, title and description fields")
 
@@ -362,17 +362,14 @@ class ActionResult(ActionMessageBase):
     A class that defines content and rules for messages set through :meth:`Action.set_result`.
     """
 
-    def __init__(self, level="SUCCESS", id=None, title="", description="", diagnosis="", remediation=""):
+    def __init__(self, level="SUCCESS", id="SUCCESS", title="", description="", diagnosis="", remediation=""):
+        if not id:
+            raise InvalidMessageError("Results require the id field")
 
         if STATUS_CODE[level] >= STATUS_CODE["SKIP"]:
-            if not id and not title:
-                raise InvalidMessageError("Non-success results require an id, title and description")
-
-            if not id:
-                raise InvalidMessageError("Non-success results require an id")
-
-            if not title:
-                raise InvalidMessageError("Non-success results require a title")
+            if not (level and title and description):
+                # id is placed in the error message so it is less confusing for the user
+                raise InvalidMessageError("Non-success results require id, level, title and description fields")
 
         elif STATUS_CODE["SUCCESS"] < STATUS_CODE[level] < STATUS_CODE["SKIP"]:
             raise InvalidMessageError(

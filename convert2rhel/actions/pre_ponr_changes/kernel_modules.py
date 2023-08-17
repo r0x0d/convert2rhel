@@ -230,12 +230,13 @@ class EnsureKernelModulesCompatibility(actions.Action):
                 self.set_result(
                     level="OVERRIDABLE",
                     id="UNSUPPORTED_KERNEL_MODULES",
-                    title="Unsupported kernel modules found",
+                    title="Unsupported kernel modules",
+                    description="Unsupported kernel modules were found",
                     diagnosis="The following loaded kernel modules are not available in RHEL:\n{0}\n".format(
                         "\n".join(unsupported_kmods)
                     ),
                     remediation="Ensure you have updated the kernel to the latest available version and rebooted the system.\nIf this "
-                    "message persists, you can prevent the modules from loading by following {1} and rerun convert2rhel.\n"
+                    "message persists, you can prevent the modules from loading by following {0} and rerun convert2rhel.\n"
                     "Keeping them loaded could cause the system to malfunction after the conversion as they might not work "
                     "properly with the RHEL kernel.\n"
                     "To circumvent this check and accept the risk you can set environment variable "

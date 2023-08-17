@@ -122,14 +122,16 @@ class RemoveExcludedPackages(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="EXCLUDED_PACKAGES_NOT_REMOVED",
-                title="Excluded packages which could not be removed",
+                title="Excluded packages not removed",
+                description="Excluded packages which could not be removed",
                 diagnosis="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
             )
         else:
             self.add_message(
                 level="INFO",
                 id="EXCLUDED_PACKAGES_REMOVED",
-                title="Excluded packages that have been removed",
+                title="Excluded packages removed",
+                description="Excluded packages that have been removed",
                 diagnosis="The following packages were removed: %s" % ", ".join(pkgs_removed),
             )
 
@@ -182,13 +184,15 @@ class RemoveRepositoryFilesPackages(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="REPOSITORY_FILE_PACKAGES_NOT_REMOVED",
-                title="Repository file packages which could not be removed",
+                title="Repository file packages not removed",
+                description="Repository file packages which could not be removed",
                 diagnosis="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
             )
         else:
             self.add_message(
                 level="INFO",
                 id="REPOSITORY_FILE_PACKAGES_REMOVED",
-                title="Repository file packages that were removed",
+                title="Repository file packages removed",
+                description="Repository file packages that were removed",
                 diagnosis="The following packages were removed: %s" % ", ".join(pkgs_removed),
             )

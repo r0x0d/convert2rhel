@@ -64,11 +64,10 @@ def test_list_third_party_packages(list_third_party_packages_instance, monkeypat
         level="OVERRIDABLE",
         id="THIRD_PARTY_PACKAGE_DETECTED",
         title="Third party packages detected",
-        description=(
-            "Only packages signed by Centos7 are to be"
-            " replaced. Red Hat support won't be provided"
-            " for the following third party packages:\nshim, ruby, pytest"
-        ),
+        description="Third party packages will not be replaced during the conversion.",
+        diagnosis="Only packages signed by Centos7 are to be replaced",
+        remediation="* You can manually remove the third party packages so the conversion will not be hindered.\n"
+        "* Check that the packages won't cause issues and set the environment variable 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' to skip this test",
     )
     assert "Only packages signed by" in caplog.records[-1].message
     assert len(pkghandler.format_pkg_info.pkgs) == 3
@@ -89,10 +88,12 @@ def test_list_third_party_packages_skip(list_third_party_packages_instance, monk
                 level="WARNING",
                 id="THIRD_PARTY_PACKAGE_DETECTED_MESSAGE",
                 title="Third party packages detected",
-                description=(
+                description="Third party packages will not be replaced during the conversion.",
+                diagnosis=(
                     "Only packages signed by Centos7 are to be replaced. Red Hat support won't be provided"
                     " for the following third party packages:\nshim, ruby, pytest"
                 ),
+                remediation=None,
             ),
             actions.ActionMessage(
                 level="WARNING",
@@ -103,12 +104,13 @@ def test_list_third_party_packages_skip(list_third_party_packages_instance, monk
                     "the third party package check.\n"
                     "Beware, this could leave your system in a broken state."
                 ),
+                diagnosis=None,
+                remediation=None,
             ),
         )
     )
     list_third_party_packages_instance.run()
     print(expected)
-    print(caplog.records[-1].message)
     print(list_third_party_packages_instance.messages)
     assert expected.issuperset(list_third_party_packages_instance.messages)
     assert expected.issubset(list_third_party_packages_instance.messages)
@@ -143,8 +145,10 @@ def test_remove_excluded_packages_all_removed(remove_excluded_packages_instance,
             actions.ActionMessage(
                 level="INFO",
                 id="EXCLUDED_PACKAGES_REMOVED",
-                title="Excluded packages that have been removed",
-                description="The following packages were removed: kernel-core, ruby, shim",
+                title="Excluded packages removed",
+                description="Excluded packages that have been removed",
+                diagnosis="The following packages were removed: kernel-core, ruby, shim",
+                remediation=None,
             ),
         )
     )
@@ -169,8 +173,10 @@ def test_remove_excluded_packages_not_removed(remove_excluded_packages_instance,
             actions.ActionMessage(
                 level="WARNING",
                 id="EXCLUDED_PACKAGES_NOT_REMOVED",
-                title="Excluded packages which could not be removed",
-                description="The following packages were not removed: ruby, shim",
+                title="Excluded packages not removed",
+                description="Excluded packages which could not be removed",
+                diagnosis="The following packages were not removed: ruby, shim",
+                remediation=None,
             ),
         )
     )
@@ -203,7 +209,8 @@ def test_remove_excluded_packages_error(remove_excluded_packages_instance, monke
         level="ERROR",
         id="EXCLUDED_PACKAGE_REMOVAL_FAILED",
         title="Failed to removed excluded package",
-        description="Raising SystemExit",
+        description="The cause of this error is unknown, please look at the diagnosis for more information.",
+        diagnosis="Raising SystemExit",
     )
 
 
@@ -220,8 +227,10 @@ def test_remove_repository_files_packages_all_removed(remove_repository_files_pa
             actions.ActionMessage(
                 level="INFO",
                 id="REPOSITORY_FILE_PACKAGES_REMOVED",
-                title="Repository file packages that were removed",
-                description="The following packages were removed: kernel-core, ruby, shim",
+                title="Repository file packages removed",
+                description="Repository file packages that were removed",
+                diagnosis="The following packages were removed: kernel-core, ruby, shim",
+                remediation=None,
             ),
         )
     )
@@ -247,8 +256,10 @@ def test_remove_repository_files_packages_not_removed(remove_repository_files_pa
             actions.ActionMessage(
                 level="WARNING",
                 id="REPOSITORY_FILE_PACKAGES_NOT_REMOVED",
-                title="Repository file packages which could not be removed",
-                description="The following packages were not removed: ruby, shim",
+                title="Repository file packages not removed",
+                description="Repository file packages which could not be removed",
+                diagnosis="The following packages were not removed: ruby, shim",
+                remediation=None,
             ),
         )
     )
@@ -285,5 +296,6 @@ def test_remove_repository_files_packages_error(remove_repository_files_packages
         level="ERROR",
         id="REPOSITORY_FILE_PACKAGE_REMOVAL_FAILED",
         title="Repository file package removal failure",
-        description="Raising SystemExit",
+        description="The cause of this error is unknown, please look at the diagnosis for more information.",
+        diagnosis="Raising SystemExit",
     )
