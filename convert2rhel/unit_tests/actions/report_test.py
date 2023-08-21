@@ -40,7 +40,7 @@ _LONG_MESSAGE = {
         (
             {
                 "CONVERT2RHEL_LATEST_VERSION": {
-                    "result": dict(level=STATUS_CODE["SUCCESS"]),
+                    "result": dict(level=STATUS_CODE["SUCCESS"], id="SUCCESS"),
                     "messages": [
                         dict(
                             level=STATUS_CODE["WARNING"],
@@ -57,7 +57,7 @@ _LONG_MESSAGE = {
                 "format_version": "1.0",
                 "actions": {
                     "CONVERT2RHEL_LATEST_VERSION": {
-                        "result": dict(level="SUCCESS"),
+                        "result": dict(level="SUCCESS", id="SUCCESS"),
                         "messages": [
                             dict(
                                 level="WARNING",
@@ -75,7 +75,7 @@ _LONG_MESSAGE = {
         (
             {
                 "CONVERT2RHEL_LATEST_VERSION": {
-                    "result": dict(level=STATUS_CODE["SUCCESS"]),
+                    "result": dict(level=STATUS_CODE["SUCCESS"], id="SUCCESS"),
                     "messages": [
                         dict(
                             level=STATUS_CODE["WARNING"],
@@ -92,7 +92,7 @@ _LONG_MESSAGE = {
                 "format_version": "1.0",
                 "actions": {
                     "CONVERT2RHEL_LATEST_VERSION": {
-                        "result": dict(level="SUCCESS"),
+                        "result": dict(level="SUCCESS", id="SUCCESS"),
                         "messages": [
                             dict(
                                 level="WARNING",
@@ -141,7 +141,7 @@ def test_summary_as_json(results, expected, tmpdir):
                     ],
                     result={
                         "level": STATUS_CODE["SUCCESS"],
-                        "id": None,
+                        "id": "SUCCESS",
                         "title": "",
                         "description": "",
                         "diagnosis": "",
@@ -152,7 +152,7 @@ def test_summary_as_json(results, expected, tmpdir):
             True,
             [
                 "(WARNING) PreSubscription.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on",
-                "(SUCCESS) PreSubscription: [No further information given]",
+                "(SUCCESS) PreSubscription.SUCCESS: [No further information given]",
             ],
         ),
         (
@@ -161,7 +161,7 @@ def test_summary_as_json(results, expected, tmpdir):
                     messages=[],
                     result={
                         "level": STATUS_CODE["SUCCESS"],
-                        "id": None,
+                        "id": "SUCCESS",
                         "title": "",
                         "description": "",
                         "diagnosis": "",
@@ -191,7 +191,7 @@ def test_summary_as_json(results, expected, tmpdir):
             },
             True,
             [
-                "(SUCCESS) PreSubscription: [No further information given]",
+                "(SUCCESS) PreSubscription.SUCCESS: [No further information given]",
                 "(WARNING) PreSubscription2.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on",
                 "(SKIP) PreSubscription2.SKIPPED: Skip\n Description: Action skip\n Diagnosis: User skip\n Remediation: move on",
             ],
@@ -204,7 +204,7 @@ def test_summary_as_json(results, expected, tmpdir):
                     messages=[],
                     result={
                         "level": STATUS_CODE["SUCCESS"],
-                        "id": None,
+                        "id": "SUCCESS",
                         "title": "",
                         "description": "",
                         "diagnosis": "",
@@ -230,7 +230,7 @@ def test_summary_as_json(results, expected, tmpdir):
                     ],
                     result={
                         "level": STATUS_CODE["SUCCESS"],
-                        "id": None,
+                        "id": "SUCCESS",
                         "title": "",
                         "description": "",
                         "diagnosis": "",
@@ -258,7 +258,7 @@ def test_summary_as_json(results, expected, tmpdir):
                     ],
                     result={
                         "level": STATUS_CODE["SUCCESS"],
-                        "id": None,
+                        "id": "SUCCESS",
                         "title": "",
                         "description": "",
                         "diagnosis": "",
@@ -587,7 +587,7 @@ def test_messages_summary_with_long_message(caplog):
                     messages=[],
                     result={
                         "level": STATUS_CODE["SUCCESS"],
-                        "id": None,
+                        "id": "SUCCESS",
                         "title": "",
                         "description": "",
                         "diagnosis": "",
@@ -633,7 +633,7 @@ def test_messages_summary_with_long_message(caplog):
                 r"\(ERROR\) ErrorAction.ERROR: Error\n Description: Action error\n Diagnosis: User error\n Remediation: move on",
                 r"\(OVERRIDABLE\) OverridableAction.OVERRIDABLE: Overridable\n Description: Action override\n Diagnosis: User override\n Remediation: move on",
                 r"\(SKIP\) SkipAction.SKIP: Skip\n Description: Action skip\n Diagnosis: User skip\n Remediation: move on",
-                r"\(SUCCESS\) PreSubscription: \[No further information given\]",
+                r"\(SUCCESS\) PreSubscription.SUCCESS: \[No further information given\]",
             ],
         ),
     ),
@@ -777,7 +777,7 @@ def test_results_summary_ordering(results, include_all_reports, expected_results
                     ],
                     result={
                         "level": STATUS_CODE["SUCCESS"],
-                        "id": None,
+                        "id": "SUCCESS",
                         "title": "",
                         "description": "",
                         "diagnosis": "",
@@ -854,7 +854,7 @@ def test_results_summary_ordering(results, include_all_reports, expected_results
                 "(WARNING) SkipAction.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on",
                 "(WARNING) OverridableAction.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on",
                 "(WARNING) ErrorAction.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on",
-                "(SUCCESS) PreSubscription: [No further information given]",
+                "(SUCCESS) PreSubscription.SUCCESS: [No further information given]",
             ],
         ),
     ),

@@ -58,8 +58,8 @@ class TestAction:
         (
             # Set one result field
             (
-                dict(level="SUCCESS"),
-                dict(level="SUCCESS", id=None, title=None, description=None, diagnosis=None, remediation=None),
+                dict(level="SUCCESS", id="SUCCESS"),
+                dict(level="SUCCESS", id="SUCCESS", title=None, description=None, diagnosis=None, remediation=None),
             ),
             # Set all result fields
             (
@@ -732,7 +732,7 @@ class TestRunActions:
             (
                 actions.FinishedActions(
                     [
-                        _ActionForTesting(id="One", messages=[], result=ActionResult(level="SUCCESS")),
+                        _ActionForTesting(id="One", messages=[], result=ActionResult(level="SUCCESS", id="SUCCESS")),
                     ],
                     [],
                     [],
@@ -742,7 +742,7 @@ class TestRunActions:
                         messages=[],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -756,12 +756,15 @@ class TestRunActions:
                 actions.FinishedActions(
                     [
                         _ActionForTesting(
-                            id="One", messages=[], result=ActionResult(level="SUCCESS"), dependencies=("One",)
+                            id="One",
+                            messages=[],
+                            result=ActionResult(level="SUCCESS", id="SUCCESS"),
+                            dependencies=("One",),
                         ),
                         _ActionForTesting(
                             id="Two",
                             messages=[],
-                            result=ActionResult(level="SUCCESS"),
+                            result=ActionResult(level="SUCCESS", id="SUCCESS"),
                             dependencies=(
                                 "One",
                                 "Two",
@@ -776,7 +779,7 @@ class TestRunActions:
                         messages=[],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -788,7 +791,7 @@ class TestRunActions:
                         messages=[],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -905,7 +908,7 @@ class TestRunActions:
             (
                 actions.FinishedActions(
                     [
-                        _ActionForTesting(id="Three", messages=[], result=ActionResult(level="SUCCESS")),
+                        _ActionForTesting(id="Three", messages=[], result=ActionResult(level="SUCCESS", id="SUCCESS")),
                     ],
                     [
                         _ActionForTesting(
@@ -965,7 +968,7 @@ class TestRunActions:
                         messages=[],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -1005,7 +1008,7 @@ class TestRunActions:
                                     remediation="move on",
                                 )
                             ],
-                            result=ActionResult(level="SUCCESS"),
+                            result=ActionResult(level="SUCCESS", id="SUCCESS"),
                         ),
                     ],
                     [],
@@ -1026,7 +1029,7 @@ class TestRunActions:
                         ],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -1051,7 +1054,7 @@ class TestRunActions:
                                     remediation="move on",
                                 )
                             ],
-                            result=ActionResult(level="SUCCESS"),
+                            result=ActionResult(level="SUCCESS", id="SUCCESS"),
                             dependencies=("One",),
                         ),
                         _ActionForTesting(
@@ -1066,7 +1069,7 @@ class TestRunActions:
                                     remediation="move on",
                                 )
                             ],
-                            result=ActionResult(level="SUCCESS"),
+                            result=ActionResult(level="SUCCESS", id="SUCCESS"),
                             dependencies=(
                                 "One",
                                 "Two",
@@ -1091,7 +1094,7 @@ class TestRunActions:
                         ],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -1113,7 +1116,7 @@ class TestRunActions:
                         ],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -1299,7 +1302,7 @@ class TestRunActions:
                                     remediation="move on",
                                 )
                             ],
-                            result=ActionResult(level="SUCCESS"),
+                            result=ActionResult(level="SUCCESS", id="SUCCESS"),
                         ),
                     ],
                     [
@@ -1408,7 +1411,7 @@ class TestRunActions:
                         ],
                         result=dict(
                             level=STATUS_CODE["SUCCESS"],
-                            id=None,
+                            id="SUCCESS",
                             title="",
                             description="",
                             diagnosis="",
@@ -1448,7 +1451,7 @@ class TestFindFailedActions:
         "BAD": dict(result=dict(level=STATUS_CODE["ERROR"], id="ERROR", message="Explosion")),
         "BAD2": dict(result=dict(level=STATUS_CODE["OVERRIDABLE"], id="OVERRIDABLE", message="Explosion")),
         "BAD3": dict(result=dict(level=STATUS_CODE["SKIP"], id="SKIP", message="Explosion")),
-        "GOOD": dict(result=dict(level=STATUS_CODE["SUCCESS"], id="", message="No Error here")),
+        "GOOD": dict(result=dict(level=STATUS_CODE["SUCCESS"], id="SUCCESS", message="No Error here")),
     }
 
     @pytest.mark.parametrize(
@@ -1470,14 +1473,14 @@ class TestActionClasses:
         ("id", "level", "title", "description", "diagnosis", "remediation", "expected"),
         (
             (
-                None,
+                "SUCCESS",
                 "SUCCESS",
                 None,
                 None,
                 None,
                 None,
                 dict(
-                    id=None,
+                    id="SUCCESS",
                     level=STATUS_CODE["SUCCESS"],
                     title=None,
                     description=None,
@@ -1787,9 +1790,9 @@ class TestActionClasses:
         (
             STATUS_CODE["SUCCESS"],
             "Test",
-            None,
+            "SUCCESS",
             {},
-            "(SUCCESS) Test: [No further information given]",
+            "(SUCCESS) Test.SUCCESS: [No further information given]",
         ),
         (
             STATUS_CODE["WARNING"],
