@@ -27,10 +27,10 @@ from convert2rhel.logger import bcolors
 
 #: _LONG_MESSAGE since we do line wrapping
 _LONG_MESSAGE = {
-    "title": "Will Robinson!  Will Robinson!",
-    "description": "  Danger Will Robinson...!",
-    "diagnosis": "   Danger!  Danger!  Danger!",
-    "remediation": "  Please report directly to your parents in the spaceship immediately.",
+    "title": "Will Robinson! Will Robinson!",
+    "description": " Danger Will Robinson...!",
+    "diagnosis": " Danger! Danger! Danger!",
+    "remediation": " Please report directly to your parents in the spaceship immediately.",
 }
 
 
@@ -449,17 +449,29 @@ def test_summary(results, expected_results, include_all_reports, caplog):
         assert expected in caplog.records[-1].message
 
 
-def test_results_summary_with_long_message(caplog):
+@pytest.mark.parametrize(
+    ("long_message"),
+    (
+        (_LONG_MESSAGE),
+        (
+            {
+                "title": "Will Robinson! Will Robinson!",
+                "description": " Danger Will Robinson...!" * 8,
+                "diagnosis": " Danger!" * 15,
+                "remediation": " Please report directly to your parents in the spaceship immediately." * 2,
+            }
+        ),
+    ),
+)
+def test_results_summary_with_long_message(long_message, caplog):
     """Test a long message because we word wrap those."""
+    result = {"level": STATUS_CODE["ERROR"], "id": "ERROR"}
+    result.update(long_message)
     report.summary(
         {
             "ErrorAction": dict(
                 messages=[],
-                result={
-                    "level": STATUS_CODE["ERROR"],
-                    "id": "ERROR",
-                    **_LONG_MESSAGE,
-                },
+                result=result,
             )
         },
         with_colors=False,
@@ -467,19 +479,41 @@ def test_results_summary_with_long_message(caplog):
 
     # Word wrapping might break on any spaces so we need to substitute
     # a pattern for those
-    assert _LONG_MESSAGE["title"] in caplog.records[-1].message
-    assert _LONG_MESSAGE["description"] in caplog.records[-1].message
-    assert _LONG_MESSAGE["diagnosis"] in caplog.records[-1].message
-    pattern = _LONG_MESSAGE["remediation"].replace(" ", "[ \t\n]+")
+    pattern = long_message["title"].replace(" ", "[ \t\n]+")
+    assert re.search(pattern, caplog.records[-1].message)
+
+    pattern = long_message["description"].replace(" ", "[ \t\n]+")
+    assert re.search(pattern, caplog.records[-1].message)
+
+    pattern = long_message["diagnosis"].replace(" ", "[ \t\n]+")
+    assert re.search(pattern, caplog.records[-1].message)
+
+    pattern = long_message["remediation"].replace(" ", "[ \t\n]+")
     assert re.search(pattern, caplog.records[-1].message)
 
 
-def test_messages_summary_with_long_message(caplog):
+@pytest.mark.parametrize(
+    ("long_message"),
+    (
+        (_LONG_MESSAGE),
+        (
+            {
+                "title": "Will Robinson! Will Robinson!",
+                "description": " Danger Will Robinson...!" * 8,
+                "diagnosis": " Danger!" * 15,
+                "remediation": " Please report directly to your parents in the spaceship immediately." * 2,
+            }
+        ),
+    ),
+)
+def test_messages_summary_with_long_message(long_message, caplog):
     """Test a long message because we word wrap those."""
+    messages = {"level": STATUS_CODE["WARNING"], "id": "WARNING_ID"}
+    messages.update(long_message)
     report.summary(
         {
             "ErrorAction": dict(
-                messages=[{"level": STATUS_CODE["WARNING"], "id": "WARNING_ID", **_LONG_MESSAGE}],
+                messages=[messages],
                 result={
                     "level": STATUS_CODE["SUCCESS"],
                     "id": "",
@@ -495,10 +529,16 @@ def test_messages_summary_with_long_message(caplog):
 
     # Word wrapping might break on any spaces so we need to substitute
     # a pattern for those
-    assert _LONG_MESSAGE["title"] in caplog.records[-1].message
-    assert _LONG_MESSAGE["description"] in caplog.records[-1].message
-    assert _LONG_MESSAGE["diagnosis"] in caplog.records[-1].message
-    pattern = _LONG_MESSAGE["remediation"].replace(" ", "[ \t\n]+")
+    pattern = long_message["title"].replace(" ", "[ \t\n]+")
+    assert re.search(pattern, caplog.records[-1].message)
+
+    pattern = long_message["description"].replace(" ", "[ \t\n]+")
+    assert re.search(pattern, caplog.records[-1].message)
+
+    pattern = long_message["diagnosis"].replace(" ", "[ \t\n]+")
+    assert re.search(pattern, caplog.records[-1].message)
+
+    pattern = long_message["remediation"].replace(" ", "[ \t\n]+")
     assert re.search(pattern, caplog.records[-1].message)
 
 
@@ -901,93 +941,106 @@ def test_messages_summary_ordering(results, include_all_reports, expected_result
                     },
                 )
             },
-            "%s(ERROR) ErrorAction.ERROR: Error\n Description: Action error\n Diagnosis: User error\n Remediation: move on%s"
-            % (bcolors.FAIL, bcolors.ENDC),
-            "%s(WARNING) ErrorAction.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on%s"
-            % (bcolors.WARNING, bcolors.ENDC),
+            "{begin}(ERROR) ErrorAction.ERROR: Error{end}\n{begin} Description: Action error{end}\n{begin} Diagnosis: User error{end}\n{begin} Remediation: move on{end}".format(
+                begin=bcolors.FAIL, end=bcolors.ENDC
+            ),
+            "{begin}(WARNING) ErrorAction.WARNING_ID: Warning{end}\n{begin} Description: Action warning{end}\n{begin} Diagnosis: User warning{end}\n{begin} Remediation: move on{end}".format(
+                begin=bcolors.WARNING, end=bcolors.ENDC
+            ),
         ),
-        # (
-        #     {
-        #         "OverridableAction": dict(
-        #             messages=[
-        #                 {
-        #                     "level": STATUS_CODE["WARNING"],
-        #                     "id": "WARNING_ID",
-        #                     "title": "Warning",
-        #                     "description": "Action warning",
-        #                     "diagnosis": "User warning",
-        #                     "remediation": "move on",
-        #                 }
-        #             ],
-        #             result={
-        #                 "level": STATUS_CODE["OVERRIDABLE"],
-        #                 "id": "OVERRIDABLE",
-        #                 "title": "Overridable",
-        #                 "description": "Action overridable",
-        #                 "diagnosis": "User overridable",
-        #                 "remediation": "move on",
-        #             },
-        #         )
-        #     },
-        #     "%s(OVERRIDABLE) OverridableAction.OVERRIDABLE: Overridable\n Description: Action overridable\n Diagnosis: User overridable\n Remediation: move on%s" % (bcolors.FAIL, bcolors.ENDC),
-        #     "%s(WARNING) OverridableAction.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on%s" % (bcolors.WARNING, bcolors.ENDC),
-        # ),
-        # (
-        #     {
-        #         "SkipAction": dict(
-        #             messages=[
-        #                 {
-        #                     "level": STATUS_CODE["WARNING"],
-        #                     "id": "WARNING_ID",
-        #                     "title": "Warning",
-        #                     "description": "Action warning",
-        #                     "diagnosis": "User warning",
-        #                     "remediation": "move on",
-        #                 }
-        #             ],
-        #             result={
-        #                 "level": STATUS_CODE["SKIP"],
-        #                 "id": "SKIP",
-        #                 "title": "Skip",
-        #                 "description": "Action skip",
-        #                 "diagnosis": "User skip",
-        #                 "remediation": "move on",
-        #             },
-        #         )
-        #     },
-        #     "%s(SKIP) SkipAction.SKIP: Skip\n Description: Action skip\n Diagnosis: User skip\n Remediation: move on%s" % (bcolors.FAIL, bcolors.ENDC),
-        #     "%s(WARNING) SkipAction.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on%s" % (bcolors.WARNING, bcolors.ENDC),
-        # ),
-        # (
-        #     {
-        #         "SuccessfulAction": dict(
-        #             messages=[
-        #                 {
-        #                     "level": STATUS_CODE["WARNING"],
-        #                     "id": "WARNING_ID",
-        #                     "title": "Warning",
-        #                     "description": "Action warning",
-        #                     "diagnosis": "User warning",
-        #                     "remediation": "move on",
-        #                 }
-        #             ],
-        #             result={
-        #                 "level": STATUS_CODE["SUCCESS"],
-        #                 "id": "",
-        #                 "title": "",
-        #                 "description": "",
-        #                 "diagnosis": "",
-        #                 "remediation": "",
-        #             },
-        #         )
-        #     },
-        #     "%s(SUCCESS) SuccessfulAction: [No further information given]%s" % (bcolors.OKGREEN, bcolors.ENDC),
-        #     "%s(WARNING) SuccessfulAction.WARNING_ID: Warning\n Description: Action warning\n Diagnosis: User warning\n Remediation: move on%s" % (bcolors.WARNING, bcolors.ENDC),
-        # ),
+        (
+            {
+                "OverridableAction": dict(
+                    messages=[
+                        {
+                            "level": STATUS_CODE["WARNING"],
+                            "id": "WARNING_ID",
+                            "title": "Warning",
+                            "description": "Action warning",
+                            "diagnosis": "User warning",
+                            "remediation": "move on",
+                        }
+                    ],
+                    result={
+                        "level": STATUS_CODE["OVERRIDABLE"],
+                        "id": "OVERRIDABLE",
+                        "title": "Overridable",
+                        "description": "Action overridable",
+                        "diagnosis": "User overridable",
+                        "remediation": "move on",
+                    },
+                )
+            },
+            "{begin}(OVERRIDABLE) OverridableAction.OVERRIDABLE: Overridable{end}\n{begin} Description: Action overridable{end}\n{begin} Diagnosis: User overridable{end}\n{begin} Remediation: move on{end}".format(
+                begin=bcolors.FAIL, end=bcolors.ENDC
+            ),
+            "{begin}(WARNING) OverridableAction.WARNING_ID: Warning{end}\n{begin} Description: Action warning{end}\n{begin} Diagnosis: User warning{end}\n{begin} Remediation: move on{end}".format(
+                begin=bcolors.WARNING, end=bcolors.ENDC
+            ),
+        ),
+        (
+            {
+                "SkipAction": dict(
+                    messages=[
+                        {
+                            "level": STATUS_CODE["WARNING"],
+                            "id": "WARNING_ID",
+                            "title": "Warning",
+                            "description": "Action warning",
+                            "diagnosis": "User warning",
+                            "remediation": "move on",
+                        }
+                    ],
+                    result={
+                        "level": STATUS_CODE["SKIP"],
+                        "id": "SKIP",
+                        "title": "Skip",
+                        "description": "Action skip",
+                        "diagnosis": "User skip",
+                        "remediation": "move on",
+                    },
+                )
+            },
+            "{begin}(SKIP) SkipAction.SKIP: Skip{end}\n{begin} Description: Action skip{end}\n{begin} Diagnosis: User skip{end}\n{begin} Remediation: move on{end}".format(
+                begin=bcolors.FAIL, end=bcolors.ENDC
+            ),
+            "{begin}(WARNING) SkipAction.WARNING_ID: Warning{end}\n{begin} Description: Action warning{end}\n{begin} Diagnosis: User warning{end}\n{begin} Remediation: move on{end}".format(
+                begin=bcolors.WARNING, end=bcolors.ENDC
+            ),
+        ),
+        (
+            {
+                "SuccessfulAction": dict(
+                    messages=[
+                        {
+                            "level": STATUS_CODE["WARNING"],
+                            "id": "WARNING_ID",
+                            "title": "Warning",
+                            "description": "Action warning",
+                            "diagnosis": "User warning",
+                            "remediation": "move on",
+                        }
+                    ],
+                    result={
+                        "level": STATUS_CODE["SUCCESS"],
+                        "id": "SUCCESS",
+                        "title": "",
+                        "description": "",
+                        "diagnosis": "",
+                        "remediation": "",
+                    },
+                )
+            },
+            "{begin}(SUCCESS) SuccessfulAction.SUCCESS: [No further information given]{end}".format(
+                begin=bcolors.OKGREEN, end=bcolors.ENDC
+            ),
+            "{begin}(WARNING) SuccessfulAction.WARNING_ID: Warning{end}\n{begin} Description: Action warning{end}\n{begin} Diagnosis: User warning{end}\n{begin} Remediation: move on{end}".format(
+                begin=bcolors.WARNING, end=bcolors.ENDC
+            ),
+        ),
     ),
 )
 def test_summary_colors(results, expected_result, expected_message, caplog):
     report.summary(results, include_all_reports=True, with_colors=True)
-    print(expected_result)
     assert expected_result in caplog.records[-1].message
     assert expected_message in caplog.records[-1].message

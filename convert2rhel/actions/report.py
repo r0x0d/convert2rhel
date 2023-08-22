@@ -89,6 +89,23 @@ def summary_as_json(results, json_file=CONVERT2RHEL_JSON_RESULTS):
         json.dump(envelope, f)
 
 
+def wrap_paragraphs(text, width=70, **kwargs):
+    """
+    Wrap the paragraphs for a given text respecting the line breaks defined in
+    the string (if any).
+
+    This solution was taken from
+    https://github.com/python/cpython/issues/46167#issuecomment-1093406764,
+    which is a solution to textwrap not properly respecting line breaks inside
+    strings.
+    """
+    return [
+        line
+        for para in text.splitlines()
+        for line in textwrap.wrap(para, width, subsequent_indent=" ", **kwargs) or [""]
+    ]
+
+
 def summary(results, include_all_reports=False, with_colors=True):
     """Output a summary regarding the actions execution.
 
@@ -179,9 +196,9 @@ def summary(results, include_all_reports=False, with_colors=True):
         combined_results_and_message = find_actions_of_severity(
             combined_results_and_message, "WARNING", level_for_combined_action_data
         )
+
     terminal_size = utils.get_terminal_size()
-    # word_wrapper = textwrap.TextWrapper(subsequent_indent="    ", width=terminal_size[0], replace_whitespace=False)
-    word_wrapper = textwrap.TextWrapper(subsequent_indent="    ", width=240, replace_whitespace=False)
+    word_wrapper = textwrap.TextWrapper(subsequent_indent="    ", width=terminal_size[0], replace_whitespace=False)
 
     # Sort the results in reverse order, this way, the most important messages
     # will be on top.
@@ -195,10 +212,13 @@ def summary(results, include_all_reports=False, with_colors=True):
             last_level = combined_result["level"]
 
         entry = format_action_status_message(combined_result["level"], message_id[0], message_id[1], combined_result)
-        entry = word_wrapper.fill(entry)
-        if with_colors:
-            entry = colorize(entry, _STATUS_TO_COLOR[combined_result["level"]])
-        report.append(entry)
+        paragraphs = wrap_paragraphs(entry, width=terminal_size[0])
+
+        for paragraph in paragraphs:
+            entry = word_wrapper.fill(paragraph)
+            if with_colors:
+                entry = colorize(entry, _STATUS_TO_COLOR[combined_result["level"]])
+            report.append(entry)
 
     # If there is no other message sent to the user, then we just give a
     # happy message to them.
