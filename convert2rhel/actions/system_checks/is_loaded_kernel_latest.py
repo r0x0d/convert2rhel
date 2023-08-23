@@ -146,6 +146,7 @@ class IsLoadedKernelLatest(actions.Action):
                 level="ERROR",
                 id="KERNEL_CURRENCY_CHECK_FAIL",
                 title="Kernel currency check failed",
+                description="Please refer to the diagnosis for further information",
                 diagnosis=(
                     "Could not find any %s from repositories to compare against the loaded kernel." % package_to_check
                 ),
@@ -188,6 +189,7 @@ class IsLoadedKernelLatest(actions.Action):
                 level="ERROR",
                 id="INVALID_KERNEL_VERSION",
                 title="Invalid kernel version detected",
+                description="The loaded kernel version mismatch the latest one available %s" % repos_message,
                 diagnosis=(
                     "The version of the loaded kernel is different from the latest version %s.\n"
                     " Latest kernel version available in %s: %s\n"

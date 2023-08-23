@@ -47,6 +47,7 @@ class TaintedKmods(actions.Action):
             self.set_result(
                 level="ERROR",
                 id="TAINTED_KMODS_DETECTED",
+                description="Please refer to the diagnosis for further information",
                 title="Tainted kernel modules detected",
                 diagnosis=(
                     "Tainted kernel modules detected:\n  {0}\n"

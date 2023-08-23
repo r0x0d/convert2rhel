@@ -44,6 +44,7 @@ class PackageUpdates(actions.Action):
                 level="INFO",
                 id="PACKAGE_UPDATES_CHECK_SKIP_NO_PUBLIC_REPOSITORIES",
                 title="Skipping the package updates check",
+                description="Please refer to the diagnosis for further information",
                 diagnosis=(
                     "Skipping the check because there are no publicly available %s %d.%d repositories available."
                     % (system_info.name, system_info.version.major, system_info.version.minor)
@@ -74,16 +75,17 @@ class PackageUpdates(actions.Action):
             package_up_to_date_error_message = (
                 "There was an error while checking whether the installed packages are up-to-date. Having an updated system is"
                 " an important prerequisite for a successful conversion. Consider verifyng the system is up to date manually"
-                " before proceeding with the conversion."
+                " before proceeding with the conversion. %s" % str(e)
             )
 
             if not package_up_to_date_check_skip:
-                logger.warning("%s %s" % (package_up_to_date_error_message, str(e)))
+                logger.warning(package_up_to_date_error_message)
                 self.set_result(
                     level="OVERRIDABLE",
                     id="PACKAGE_UP_TO_DATE_CHECK_FAIL",
                     title="Package up to date check fail",
-                    diagnosis=("%s %s" % (package_up_to_date_error_message, str(e))),
+                    description="Please refer to the diagnosis for further information",
+                    diagnosis=(package_up_to_date_error_message),
                 )
                 return
             skip_package_up_to_date_check_message = (
@@ -104,7 +106,8 @@ class PackageUpdates(actions.Action):
                 level="WARNING",
                 id="PACKAGE_UP_TO_DATE_CHECK_MESSAGE",
                 title="Package up to date check fail",
-                diagnosis=("%s %s" % (package_up_to_date_error_message, str(e))),
+                description="Please refer to the diagnosis for further information",
+                diagnosis=(package_up_to_date_error_message),
             )
             return
 
@@ -128,6 +131,7 @@ class PackageUpdates(actions.Action):
                     level="OVERRIDABLE",
                     id="OUT_OF_DATE_PACKAGES",
                     title="Outdated packages detected",
+                    description="Please refer to the diagnosis for further information",
                     diagnosis=package_not_up_to_date_error_message,
                 )
                 return
@@ -150,6 +154,7 @@ class PackageUpdates(actions.Action):
                 level="WARNING",
                 id="PACKAGE_NOT_UP_TO_DATE_MESSAGE",
                 title="Outdated packages detected",
+                description="Please refer to the diagnosis for further information",
                 diagnosis=package_not_up_to_date_error_message,
             )
             return

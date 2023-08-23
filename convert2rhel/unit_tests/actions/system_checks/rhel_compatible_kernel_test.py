@@ -80,17 +80,20 @@ def test_check_rhel_compatible_kernel_failure(
         rhel_compatible_kernel_action,
         level="ERROR",
         id="UNEXPECTED_VERSION",
-        message=(
-            "The booted kernel version is incompatible with the standard RHEL kernel. "
-            "Diagnosis message: Bad kernel version"
-            "To proceed with the conversion, boot into a kernel that is available in the Kernel-core 1 base repository"
+        title="Incompatible booted kernel version",
+        description="Please refer to the diagnosis for further information",
+        diagnosis="The booted kernel version is incompatible with the standard RHEL kernel",
+        remediation=(
+            "To proceed with the conversion, boot into a kernel that is available in the {0} {1} base repository"
             " by executing the following steps:\n\n"
-            "1. Ensure that the Kernel-core 1 base repository is enabled\n"
+            "1. Ensure that the {0} {1} base repository is enabled\n"
             "2. Run: yum install kernel\n"
             "3. (optional) Run: grubby --set-default "
-            '/boot/vmlinuz-`rpm -q --qf "%{BUILDTIME}\\t%{EVR}.%{ARCH}\\n" kernel | sort -nr | head -1 | cut -f2`\n'
+            '/boot/vmlinuz-`rpm -q --qf "%{{BUILDTIME}}\\t%{{EVR}}.%{{ARCH}}\\n" kernel | sort -nr | head -1 | cut -f2`\n'
             "4. Reboot the machine and if step 3 was not applied choose the kernel"
-            " installed in step 2 manually"
+            " installed in step 2 manually".format(
+                rhel_compatible_kernel.system_info.name, rhel_compatible_kernel.system_info.version.major
+            )
         ),
     )
 

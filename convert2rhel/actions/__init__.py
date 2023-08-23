@@ -369,7 +369,7 @@ class ActionResult(ActionMessageBase):
         if STATUS_CODE[level] >= STATUS_CODE["SKIP"]:
             if not (level and title and description):
                 # id is placed in the error message so it is less confusing for the user
-                raise InvalidMessageError("Non-success results require id, level, title and description fields")
+                raise InvalidMessageError("Non-success results require level, title and description fields")
 
         elif STATUS_CODE["SUCCESS"] < STATUS_CODE[level] < STATUS_CODE["SKIP"]:
             raise InvalidMessageError(

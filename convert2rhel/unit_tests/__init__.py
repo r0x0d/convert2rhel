@@ -455,22 +455,23 @@ def assert_actions_result(
 ):
     """Helper function to assert result set by Actions Framework."""
 
-    if level != _NO_USER_VALUE:
+    if level and level != _NO_USER_VALUE:
         assert instance.result.level == STATUS_CODE[level]
 
-    if id != _NO_USER_VALUE:
+    if id and id != _NO_USER_VALUE:
         assert instance.result.id == id
 
-    if title != _NO_USER_VALUE:
+    if title and title != _NO_USER_VALUE:
         assert title in instance.result.title
 
-    if description != _NO_USER_VALUE:
+    if description and description != _NO_USER_VALUE:
+        print(instance.result)
         assert description in instance.result.description
 
-    if diagnosis != _NO_USER_VALUE:
+    if diagnosis and diagnosis != _NO_USER_VALUE:
         assert diagnosis in instance.result.diagnosis
 
-    if remediation != _NO_USER_VALUE:
+    if remediation and remediation != _NO_USER_VALUE:
         assert remediation in instance.result.remediation
 
 
