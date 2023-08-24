@@ -94,8 +94,6 @@ def _bad_kernel_version(kernel_release):
     kernel_version = kernel_release.split("-")[0]
     try:
         incompatible_version = COMPATIBLE_KERNELS_VERS[system_info.version.major] != kernel_version
-        print(kernel_version)
-        print(COMPATIBLE_KERNELS_VERS[system_info.version.major])
     except KeyError:
         raise KernelIncompatibleError(
             "UNEXPECTED_VERSION",

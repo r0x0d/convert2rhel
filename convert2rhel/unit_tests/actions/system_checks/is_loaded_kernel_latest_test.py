@@ -121,8 +121,6 @@ class TestIsLoadedKernelLatest:
 
         is_loaded_kernel_latest_action.run()
 
-        # repoquery_kernel_version = repoquery_version.split("\t")[2]
-        # uname_kernel_version = uname_version.rsplit(".", 1)[0]
         unit_tests.assert_actions_result(
             is_loaded_kernel_latest_action,
             id="INVALID_KERNEL_VERSION",

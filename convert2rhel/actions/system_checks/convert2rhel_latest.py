@@ -63,7 +63,7 @@ class Convert2rhelLatest(actions.Action):
             self.add_message(
                 level="WARNING",
                 id="CONVERT2RHEL_LATEST_CHECK_SKIP_NO_INTERNET",
-                title="Skipping convert2rhel latest version check",
+                title="Skipping Convert2RHEL latest version check",
                 description="Skipping the check because no internet connection has been detected.",
             )
             return
@@ -196,7 +196,7 @@ class Convert2rhelLatest(actions.Action):
                 self.add_message(
                     level="WARNING",
                     id="ALLOW_OLDER_VERSION_ENVIRONMENT_VARIABLE",
-                    title="Outdated convert2rhel version detected",
+                    title="Outdated Convert2RHEL version detected",
                     description="An outdated convert2rhel version has been detected",
                     diagnosis=(
                         "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
@@ -215,7 +215,7 @@ class Convert2rhelLatest(actions.Action):
                     self.add_message(
                         level="WARNING",
                         id="OUTDATED_CONVERT2RHEL_VERSION",
-                        title="Outdated convert2rhel version detected",
+                        title="Outdated Convert2RHEL version detected",
                         description="An outdated convert2rhel version has been detected",
                         diagnosis=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
@@ -228,7 +228,7 @@ class Convert2rhelLatest(actions.Action):
                     self.set_result(
                         level="ERROR",
                         id="OUT_OF_DATE",
-                        title="Outdated convert2rhel version detected",
+                        title="Outdated Convert2RHEL version detected",
                         description="An outdated convert2rhel version has been detected",
                         diagnosis=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"

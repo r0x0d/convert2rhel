@@ -43,7 +43,7 @@ class ListThirdPartyPackages(actions.Action):
             warning_message = (
                 "Only packages signed by %s are to be"
                 " replaced. Red Hat support won't be provided"
-                " for the following third party packages:\n%s" % (system_info.name, ", ".join(pkg_list))
+                " for the following third party packages:\n%s" % (system_info.name, pkg_list)
             )
 
             if not third_party_package_skip:
@@ -99,7 +99,8 @@ class RemoveExcludedPackages(actions.Action):
         logger.info("Searching for the following excluded packages:\n")
         try:
             pkgs_to_remove = sorted(pkghandler._get_packages_to_remove(system_info.excluded_pkgs))
-            pkgs_removed = sorted(pkghandler.remove_pkgs_unless_from_redhat(pkgs_to_remove))
+            # this call can return None, which is not ideal to use with sorted.
+            pkgs_removed = sorted(pkghandler.remove_pkgs_unless_from_redhat(pkgs_to_remove) or [])
 
             # TODO: Handling SystemExit here as way to speedup exception
             # handling and not refactor contents of the underlying function.
@@ -161,7 +162,8 @@ class RemoveRepositoryFilesPackages(actions.Action):
         logger.info("Searching for packages containing .repo files or affecting variables in the .repo files:\n")
         try:
             pkgs_to_remove = sorted(pkghandler._get_packages_to_remove(system_info.repofile_pkgs))
-            pkgs_removed = sorted(pkghandler.remove_pkgs_unless_from_redhat(pkgs_to_remove))
+            # this call can return None, which is not ideal to use with sorted.
+            pkgs_removed = sorted(pkghandler.remove_pkgs_unless_from_redhat(pkgs_to_remove) or [])
 
             # TODO: Handling SystemExit here as way to speedup exception
             # handling and not refactor contents of the underlying function.
