@@ -59,12 +59,13 @@ class Convert2rhelLatest(actions.Action):
         super(Convert2rhelLatest, self).run()
 
         if not system_info.has_internet_access:
-            logger.warning("Skipping the check because no internet connection has been detected.")
+            description = "Skipping the check because no internet connection has been detected."
+            logger.warning(description)
             self.add_message(
                 level="WARNING",
                 id="CONVERT2RHEL_LATEST_CHECK_SKIP_NO_INTERNET",
                 title="Skipping Convert2RHEL latest version check",
-                description="Skipping the check because no internet connection has been detected.",
+                description=description,
             )
             return
 
@@ -197,7 +198,7 @@ class Convert2rhelLatest(actions.Action):
                     level="WARNING",
                     id="ALLOW_OLDER_VERSION_ENVIRONMENT_VARIABLE",
                     title="Outdated Convert2RHEL version detected",
-                    description="An outdated convert2rhel version has been detected",
+                    description="An outdated Convert2RHEL version has been detected",
                     diagnosis=(
                         "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                         "'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable detected, continuing conversion"
@@ -216,7 +217,7 @@ class Convert2rhelLatest(actions.Action):
                         level="WARNING",
                         id="OUTDATED_CONVERT2RHEL_VERSION",
                         title="Outdated Convert2RHEL version detected",
-                        description="An outdated convert2rhel version has been detected",
+                        description="An outdated Convert2RHEL version has been detected",
                         diagnosis=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                             "We encourage you to update to the latest version."
@@ -229,7 +230,7 @@ class Convert2rhelLatest(actions.Action):
                         level="ERROR",
                         id="OUT_OF_DATE",
                         title="Outdated Convert2RHEL version detected",
-                        description="An outdated convert2rhel version has been detected",
+                        description="An outdated Convert2RHEL version has been detected",
                         diagnosis=(
                             "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                             "Only the latest version is supported for conversion."

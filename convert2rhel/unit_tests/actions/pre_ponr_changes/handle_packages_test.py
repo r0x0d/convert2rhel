@@ -57,30 +57,10 @@ def test_list_third_party_packages(list_third_party_packages_instance, monkeypat
     monkeypatch.setattr(pkghandler, "get_third_party_pkgs", unit_tests.GetInstalledPkgsWFingerprintsMocked())
     monkeypatch.setattr(pkghandler, "format_pkg_info", PrintPkgInfoMocked(["shim", "ruby", "pytest"]))
     monkeypatch.setattr(system_info, "name", "Centos7")
-
-    list_third_party_packages_instance.run()
-    unit_tests.assert_actions_result(
-        list_third_party_packages_instance,
-        level="OVERRIDABLE",
-        id="THIRD_PARTY_PACKAGE_DETECTED",
-        title="Third party packages detected",
-        description="Third party packages will not be replaced during the conversion.",
-        diagnosis="Only packages signed by Centos7 are to be replaced",
-        remediation="* You can manually remove the third party packages so the conversion will not be hindered.\n"
-        "* Check that the packages won't cause issues and set the environment variable 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' to skip this test",
-    )
-    assert "Only packages signed by" in caplog.records[-1].message
-    assert len(pkghandler.format_pkg_info.pkgs) == 3
-
-
-def test_list_third_party_packages_skip(list_third_party_packages_instance, monkeypatch, caplog):
-    monkeypatch.setattr(pkghandler, "get_third_party_pkgs", unit_tests.GetInstalledPkgsWFingerprintsMocked())
-    monkeypatch.setattr(pkghandler, "format_pkg_info", PrintPkgInfoMocked(["shim", "ruby", "pytest"]))
-    monkeypatch.setattr(system_info, "name", "Centos7")
-    monkeypatch.setattr(
-        os,
-        "environ",
-        {"CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP": 1},
+    diagnosis = (
+        "Only packages signed by Centos7 are to be"
+        " replaced. Red Hat support won't be provided"
+        " for the following third party packages:\npkg1-0:None-None.None, pkg2-0:None-None.None, gpg-pubkey-0:1.0.0-1.x86_64"
     )
     expected = set(
         (
@@ -89,35 +69,25 @@ def test_list_third_party_packages_skip(list_third_party_packages_instance, monk
                 id="THIRD_PARTY_PACKAGE_DETECTED_MESSAGE",
                 title="Third party packages detected",
                 description="Third party packages will not be replaced during the conversion.",
-                diagnosis=(
-                    "Only packages signed by Centos7 are to be replaced. Red Hat support won't be provided"
-                    " for the following third party packages:\nshim, ruby, pytest"
-                ),
-                remediation=None,
-            ),
-            actions.ActionMessage(
-                level="WARNING",
-                id="SKIP_THIRD_PARTY_PACKAGE_CHECK",
-                title="Skipping the third party package check",
-                description=(
-                    "Detected 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' environment variable, we will skip "
-                    "the third party package check.\n"
-                    "Beware, this could leave your system in a broken state."
-                ),
-                diagnosis=None,
+                diagnosis=diagnosis,
                 remediation=None,
             ),
         )
     )
     list_third_party_packages_instance.run()
-    print(expected)
-    print(list_third_party_packages_instance.messages)
+    unit_tests.assert_actions_result(
+        list_third_party_packages_instance,
+        level="SUCCESS",
+        id="THIRD_PARTY_PACKAGE_DETECTED",
+        title="Third party packages detected",
+        description=None,
+        diagnosis=None,
+        remediation=None,
+    )
+
+    assert len(pkghandler.format_pkg_info.pkgs) == 3
     assert expected.issuperset(list_third_party_packages_instance.messages)
     assert expected.issubset(list_third_party_packages_instance.messages)
-    assert "Only packages signed by" in caplog.records[-1].message
-    assert len(pkghandler.format_pkg_info.pkgs) == 3
-
-    assert list_third_party_packages_instance.result.level == actions.STATUS_CODE["SUCCESS"]
 
 
 class CommandCallableObject(unit_tests.MockFunction):
@@ -153,20 +123,20 @@ def test_remove_excluded_packages_all_removed(remove_excluded_packages_instance,
         )
     )
     monkeypatch.setattr(system_info, "excluded_pkgs", ["installed_pkg", "not_installed_pkg"])
-    monkeypatch.setattr(pkghandler, "_get_packages_to_remove", CommandCallableObject(pkgs_removed))
+    monkeypatch.setattr(pkghandler, "get_packages_to_remove", CommandCallableObject(pkgs_removed))
     monkeypatch.setattr(pkghandler, "remove_pkgs_unless_from_redhat", CommandCallableObject(pkgs_to_remove))
 
     remove_excluded_packages_instance.run()
     assert expected.issuperset(remove_excluded_packages_instance.messages)
     assert expected.issubset(remove_excluded_packages_instance.messages)
-    assert pkghandler._get_packages_to_remove.called == 1
+    assert pkghandler.get_packages_to_remove.called == 1
     assert pkghandler.remove_pkgs_unless_from_redhat.called == 1
-    assert pkghandler._get_packages_to_remove.command == system_info.excluded_pkgs
+    assert pkghandler.get_packages_to_remove.command == system_info.excluded_pkgs
     assert remove_excluded_packages_instance.result.level == actions.STATUS_CODE["SUCCESS"]
 
 
 def test_remove_excluded_packages_not_removed(remove_excluded_packages_instance, monkeypatch):
-    pkgs_to_remove = ["shim", "ruby", "kernel-core"]
+    pkgs_to_remove = unit_tests.GetInstalledPkgsWFingerprintsMocked().get_packages()
     pkgs_removed = ["kernel-core"]
     expected = set(
         (
@@ -175,29 +145,29 @@ def test_remove_excluded_packages_not_removed(remove_excluded_packages_instance,
                 id="EXCLUDED_PACKAGES_NOT_REMOVED",
                 title="Excluded packages not removed",
                 description="Excluded packages which could not be removed",
-                diagnosis="The following packages were not removed: ruby, shim",
+                diagnosis="The following packages were not removed: gpg-pubkey-0:1.0.0-1.x86_64, pkg1-0:None-None.None, pkg2-0:None-None.None",
                 remediation=None,
             ),
         )
     )
     monkeypatch.setattr(system_info, "excluded_pkgs", ["installed_pkg", "not_installed_pkg"])
-    monkeypatch.setattr(pkghandler, "_get_packages_to_remove", CommandCallableObject(pkgs_to_remove))
+    monkeypatch.setattr(pkghandler, "get_packages_to_remove", CommandCallableObject(pkgs_to_remove))
     monkeypatch.setattr(pkghandler, "remove_pkgs_unless_from_redhat", CommandCallableObject(pkgs_removed))
 
     remove_excluded_packages_instance.run()
 
     assert expected.issuperset(remove_excluded_packages_instance.messages)
     assert expected.issubset(remove_excluded_packages_instance.messages)
-    assert pkghandler._get_packages_to_remove.called == 1
+    assert pkghandler.get_packages_to_remove.called == 1
     assert pkghandler.remove_pkgs_unless_from_redhat.called == 1
-    assert pkghandler._get_packages_to_remove.command == system_info.excluded_pkgs
+    assert pkghandler.get_packages_to_remove.command == system_info.excluded_pkgs
     assert remove_excluded_packages_instance.result.level == actions.STATUS_CODE["SUCCESS"]
 
 
 def test_remove_excluded_packages_error(remove_excluded_packages_instance, monkeypatch):
     pkgs_removed = ["shim", "ruby", "kernel-core"]
     monkeypatch.setattr(system_info, "excluded_pkgs", [])
-    monkeypatch.setattr(pkghandler, "_get_packages_to_remove", CommandCallableObject(pkgs_removed))
+    monkeypatch.setattr(pkghandler, "get_packages_to_remove", CommandCallableObject(pkgs_removed))
     monkeypatch.setattr(
         pkghandler, "remove_pkgs_unless_from_redhat", mock.Mock(side_effect=SystemExit("Raising SystemExit"))
     )
@@ -235,21 +205,21 @@ def test_remove_repository_files_packages_all_removed(remove_repository_files_pa
         )
     )
     monkeypatch.setattr(system_info, "repofile_pkgs", ["installed_pkg", "not_installed_pkg"])
-    monkeypatch.setattr(pkghandler, "_get_packages_to_remove", CommandCallableObject(pkgs_to_remove))
+    monkeypatch.setattr(pkghandler, "get_packages_to_remove", CommandCallableObject(pkgs_to_remove))
     monkeypatch.setattr(pkghandler, "remove_pkgs_unless_from_redhat", CommandCallableObject(pkgs_removed))
 
     remove_repository_files_packages_instance.run()
 
     assert expected.issuperset(remove_repository_files_packages_instance.messages)
     assert expected.issubset(remove_repository_files_packages_instance.messages)
-    assert pkghandler._get_packages_to_remove.called == 1
+    assert pkghandler.get_packages_to_remove.called == 1
     assert pkghandler.remove_pkgs_unless_from_redhat.called == 1
-    assert pkghandler._get_packages_to_remove.command == system_info.repofile_pkgs
+    assert pkghandler.get_packages_to_remove.command == system_info.repofile_pkgs
     assert remove_repository_files_packages_instance.result.level == actions.STATUS_CODE["SUCCESS"]
 
 
 def test_remove_repository_files_packages_not_removed(remove_repository_files_packages_instance, monkeypatch):
-    pkgs_to_remove = ["shim", "ruby", "kernel-core"]
+    pkgs_to_remove = unit_tests.GetInstalledPkgsWFingerprintsMocked().get_packages()
     pkgs_removed = ["kernel-core"]
     expected = set(
         (
@@ -258,22 +228,22 @@ def test_remove_repository_files_packages_not_removed(remove_repository_files_pa
                 id="REPOSITORY_FILE_PACKAGES_NOT_REMOVED",
                 title="Repository file packages not removed",
                 description="Repository file packages which could not be removed",
-                diagnosis="The following packages were not removed: ruby, shim",
+                diagnosis="The following packages were not removed: gpg-pubkey-0:1.0.0-1.x86_64, pkg1-0:None-None.None, pkg2-0:None-None.None",
                 remediation=None,
             ),
         )
     )
     monkeypatch.setattr(system_info, "repofile_pkgs", ["installed_pkg", "not_installed_pkg"])
-    monkeypatch.setattr(pkghandler, "_get_packages_to_remove", CommandCallableObject(pkgs_to_remove))
+    monkeypatch.setattr(pkghandler, "get_packages_to_remove", CommandCallableObject(pkgs_to_remove))
     monkeypatch.setattr(pkghandler, "remove_pkgs_unless_from_redhat", CommandCallableObject(pkgs_removed))
 
     remove_repository_files_packages_instance.run()
 
     assert expected.issuperset(remove_repository_files_packages_instance.messages)
     assert expected.issubset(remove_repository_files_packages_instance.messages)
-    assert pkghandler._get_packages_to_remove.called == 1
+    assert pkghandler.get_packages_to_remove.called == 1
     assert pkghandler.remove_pkgs_unless_from_redhat.called == 1
-    assert pkghandler._get_packages_to_remove.command == system_info.repofile_pkgs
+    assert pkghandler.get_packages_to_remove.command == system_info.repofile_pkgs
     assert remove_repository_files_packages_instance.result.level == actions.STATUS_CODE["SUCCESS"]
 
 

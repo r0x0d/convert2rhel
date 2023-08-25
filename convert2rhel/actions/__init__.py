@@ -563,7 +563,7 @@ class Stage:
 
             if action.result.level > STATUS_CODE["WARNING"]:
                 message = format_action_status_message(
-                    action.result.level, action.id, action.result.id, action.result.description
+                    action.result.level, action.id, action.result.id, action.result.to_dict()
                 )
                 logger.error(message)
                 failures.append(action)
@@ -747,7 +747,7 @@ def find_actions_of_severity(results, severity, key):
     return matched_actions
 
 
-def format_action_status_message(status_code, action_id, id, message):
+def format_action_status_message(status_code, action_id, id, result):
     """Helper function to format a message about each Action result.
 
     :param status_code: The status code that will be used in the template.
@@ -756,31 +756,42 @@ def format_action_status_message(status_code, action_id, id, message):
     :type action_id: str
     :param id: Error id associated with the action
     :type id: str
-    :param message: The message that was produced in the action
-    :type message: str
+    :param result: The result that was produced in the action
+    :type result: dict[str, Any]
 
     :return: The formatted message that will be logged to the user.
     :rtype: str
     """
     level_name = _STATUS_NAME_FROM_CODE[status_code]
-    template = "({LEVEL}) {ACTION_ID}"
-    # `id` and `message` may not be present everytime, since it
-    # can be empty (either by mistake, or, intended), we only want to
-    # apply these fields if they are present, with a special mention to
-    # `message`.
-    if id:
-        template += "::{ID}"
+    template = "({LEVEL}) {ACTION_ID}::{ID} -"
+    default_message = "[No further information given]"
 
-    # Special case for `message` to not output empty message to the
-    # user without message.
-    if message:
-        template += " - {MESSAGE}"
-    else:
-        template += " - [No further information given]"
+    # Success results doesn't need to have id, title or anything else. Instead,
+    # we can output a simple message with the addition of the `No further
+    # information given` and return earlier to skip the other conditionals
+    # checks.
+    if status_code == STATUS_CODE["SUCCESS"]:
+        template += " {MESSAGE}"
+        return template.format(ID=id, LEVEL=level_name, ACTION_ID=action_id, MESSAGE=default_message)
+
+    title = result["title"]
+    template += " {TITLE}\n"
+
+    description = result["description"] if result["description"] else default_message
+    template += " Description: {DESCRIPTION}\n"
+
+    diagnosis = result["diagnosis"] if result["diagnosis"] else default_message
+    template += " Diagnosis: {DIAGNOSIS}\n"
+
+    remediation = result["remediation"] if result["remediation"] else default_message
+    template += " Remediation: {REMEDIATION}\n"
 
     return template.format(
         LEVEL=level_name,
         ACTION_ID=action_id,
         ID=id,
-        MESSAGE=message,
+        TITLE=title,
+        DESCRIPTION=description,
+        DIAGNOSIS=diagnosis,
+        REMEDIATION=remediation,
     )

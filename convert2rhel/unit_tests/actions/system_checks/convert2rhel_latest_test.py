@@ -22,7 +22,7 @@ import os
 import pytest
 import six
 
-from convert2rhel import actions, systeminfo, utils
+from convert2rhel import actions, systeminfo, unit_tests, utils
 from convert2rhel.actions.system_checks import convert2rhel_latest
 
 
@@ -77,7 +77,7 @@ class TestCheckConvert2rhelLatest:
                 actions.ActionMessage(
                     level="WARNING",
                     id="CONVERT2RHEL_LATEST_CHECK_SKIP_NO_INTERNET",
-                    title="Skipping convert2rhel latest version check",
+                    title="Skipping Convert2RHEL latest version check",
                     description="Skipping the check because no internet connection has been detected.",
                     diagnosis=None,
                     remediation=None,
@@ -103,17 +103,7 @@ class TestCheckConvert2rhelLatest:
         indirect=True,
     )
     def test_convert2rhel_latest_action_error(self, convert2rhel_latest_action, convert2rhel_latest_version_test):
-
         convert2rhel_latest_action.run()
-
-        assert convert2rhel_latest_action.result.id == "OUT_OF_DATE"
-        assert convert2rhel_latest_action.result.level == actions.STATUS_CODE["ERROR"]
-        assert convert2rhel_latest_action.result.title == "Outdated convert2rhel version detected"
-        assert convert2rhel_latest_action.result.description == "An outdated convert2rhel version has been detected"
-        assert (
-            convert2rhel_latest_action.result.remediation
-            == "If you want to ignore this check, then set the environment variable 'CONVERT2RHEL_ALLOW_OLDER_VERSION=1' to continue."
-        )
 
         local_version, package_version = convert2rhel_latest_version_test
         if len(package_version) > 36:
@@ -121,11 +111,19 @@ class TestCheckConvert2rhelLatest:
             package_version = package_version[19:25]
         else:
             package_version = package_version[19:23]
-        msg = (
-            "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
-            "Only the latest version is supported for conversion." % (local_version, package_version)
+
+        unit_tests.assert_actions_result(
+            convert2rhel_latest_action,
+            level="ERROR",
+            id="OUT_OF_DATE",
+            title="Outdated Convert2RHEL version detected",
+            description="An outdated Convert2RHEL version has been detected",
+            diagnosis=(
+                "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
+                "Only the latest version is supported for conversion." % (local_version, package_version)
+            ),
+            remediation="If you want to ignore this check, then set the environment variable 'CONVERT2RHEL_ALLOW_OLDER_VERSION=1' to continue.",
         )
-        assert convert2rhel_latest_action.result.diagnosis == msg
 
     @pytest.mark.parametrize(
         ("convert2rhel_latest_version_test",),
@@ -141,7 +139,6 @@ class TestCheckConvert2rhelLatest:
     def test_convert2rhel_latest_action_outdated_version(
         self, convert2rhel_latest_action, convert2rhel_latest_version_test
     ):
-
         convert2rhel_latest_action.run()
 
         local_version, package_version = convert2rhel_latest_version_test
@@ -156,8 +153,8 @@ class TestCheckConvert2rhelLatest:
                 actions.ActionMessage(
                     level="WARNING",
                     id="OUTDATED_CONVERT2RHEL_VERSION",
-                    title="Outdated convert2rhel version detected",
-                    description="An outdated convert2rhel version has been detected",
+                    title="Outdated Convert2RHEL version detected",
+                    description="An outdated Convert2RHEL version has been detected",
                     diagnosis=(
                         "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                         "We encourage you to update to the latest version." % (local_version, package_version)
@@ -322,17 +319,7 @@ class TestCheckConvert2rhelLatest:
         indirect=True,
     )
     def test_c2r_up_to_date_multiple_packages(self, convert2rhel_latest_action, convert2rhel_latest_version_test):
-
         convert2rhel_latest_action.run()
-
-        assert convert2rhel_latest_action.result.id == "OUT_OF_DATE"
-        assert convert2rhel_latest_action.result.level == actions.STATUS_CODE["ERROR"]
-        assert convert2rhel_latest_action.result.title == "Outdated convert2rhel version detected"
-        assert convert2rhel_latest_action.result.description == "An outdated convert2rhel version has been detected"
-        assert (
-            convert2rhel_latest_action.result.remediation
-            == "If you want to ignore this check, then set the environment variable 'CONVERT2RHEL_ALLOW_OLDER_VERSION=1' to continue."
-        )
 
         local_version, package_version = convert2rhel_latest_version_test
 
@@ -341,11 +328,18 @@ class TestCheckConvert2rhelLatest:
         else:
             package_version = package_version[93:97]
 
-        msg = (
-            "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
-            "Only the latest version is supported for conversion." % (local_version, package_version)
+        unit_tests.assert_actions_result(
+            convert2rhel_latest_action,
+            level="ERROR",
+            id="OUT_OF_DATE",
+            title="Outdated Convert2RHEL version detected",
+            description="An outdated Convert2RHEL version has been detected",
+            diagnosis=(
+                "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
+                "Only the latest version is supported for conversion." % (local_version, package_version)
+            ),
+            remediation="If you want to ignore this check, then set the environment variable 'CONVERT2RHEL_ALLOW_OLDER_VERSION=1' to continue.",
         )
-        assert convert2rhel_latest_action.result.diagnosis == msg
 
     @pytest.mark.parametrize(
         (
@@ -386,8 +380,8 @@ class TestCheckConvert2rhelLatest:
                 actions.ActionMessage(
                     level="WARNING",
                     id="ALLOW_OLDER_VERSION_ENVIRONMENT_VARIABLE",
-                    title="Outdated convert2rhel version detected",
-                    description="An outdated convert2rhel version has been detected",
+                    title="Outdated Convert2RHEL version detected",
+                    description="An outdated Convert2RHEL version has been detected",
                     diagnosis="You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                     "'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable detected, continuing conversion"
                     % (convert2rhel_latest_version_test[0], current_version),

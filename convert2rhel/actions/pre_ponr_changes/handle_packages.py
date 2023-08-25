@@ -16,13 +16,16 @@
 __metaclass__ = type
 
 import logging
-import os
 
 from convert2rhel import actions, pkghandler
 from convert2rhel.systeminfo import system_info
 
 
 logger = logging.getLogger(__name__)
+
+
+def _get_pkg_names(packages):
+    return [pkghandler.get_pkg_nevra(pkg_obj, include_zero_epoch=True) for pkg_obj in packages]
 
 
 class ListThirdPartyPackages(actions.Action):
@@ -37,48 +40,27 @@ class ListThirdPartyPackages(actions.Action):
 
         logger.task("Convert: List third-party packages")
         third_party_pkgs = pkghandler.get_third_party_pkgs()
-        third_party_package_skip = os.environ.get("CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP", None)
         if third_party_pkgs:
             pkg_list = pkghandler.format_pkg_info(third_party_pkgs)
             warning_message = (
                 "Only packages signed by %s are to be"
                 " replaced. Red Hat support won't be provided"
-                " for the following third party packages:\n%s" % (system_info.name, pkg_list)
-            )
-
-            if not third_party_package_skip:
-                logger.warning(warning_message)
-                self.set_result(
-                    level="OVERRIDABLE",
-                    id="THIRD_PARTY_PACKAGE_DETECTED",
-                    title="Third party packages detected",
-                    description="Third party packages will not be replaced during the conversion.",
-                    diagnosis=warning_message,
-                    remediation="* You can manually remove the third party packages so the conversion will not be hindered.\n"
-                    "* Check that the packages won't cause issues and set the environment variable 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' to skip this test",
-                )
-                return
-
-            skip_message = (
-                "Detected 'CONVERT2RHEL_THIRD_PARTY_PACKAGE_CHECK_SKIP' environment variable, we will skip "
-                "the third party package check.\n"
-                "Beware, this could leave your system in a broken state."
-            )
-            logger.warning(skip_message)
-            self.add_message(
-                level="WARNING",
-                id="SKIP_THIRD_PARTY_PACKAGE_CHECK",
-                title="Skipping the third party package check",
-                description=skip_message,
+                " for the following third party packages:\n" % system_info.name
             )
 
             logger.warning(warning_message)
+            logger.info(pkg_list)
+            self.set_result(
+                level="SUCCESS",
+                id="THIRD_PARTY_PACKAGE_DETECTED",
+                title="Third party packages detected",
+            )
             self.add_message(
                 level="WARNING",
                 id="THIRD_PARTY_PACKAGE_DETECTED_MESSAGE",
                 title="Third party packages detected",
                 description="Third party packages will not be replaced during the conversion.",
-                diagnosis=warning_message,
+                diagnosis=warning_message + ", ".join(_get_pkg_names(third_party_pkgs)),
             )
             return
         else:
@@ -98,7 +80,7 @@ class RemoveExcludedPackages(actions.Action):
         logger.task("Convert: Remove excluded packages")
         logger.info("Searching for the following excluded packages:\n")
         try:
-            pkgs_to_remove = sorted(pkghandler._get_packages_to_remove(system_info.excluded_pkgs))
+            pkgs_to_remove = sorted(pkghandler.get_packages_to_remove(system_info.excluded_pkgs))
             # this call can return None, which is not ideal to use with sorted.
             pkgs_removed = sorted(pkghandler.remove_pkgs_unless_from_redhat(pkgs_to_remove) or [])
 
@@ -120,12 +102,13 @@ class RemoveExcludedPackages(actions.Action):
         # shows which packages were not removed, if false, all packages were removed
         pkgs_not_removed = sorted(frozenset(pkgs_to_remove).difference(pkgs_removed))
         if pkgs_not_removed:
+            pkg_names = _get_pkg_names(pkgs_not_removed)
             self.add_message(
                 level="WARNING",
                 id="EXCLUDED_PACKAGES_NOT_REMOVED",
                 title="Excluded packages not removed",
                 description="Excluded packages which could not be removed",
-                diagnosis="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
+                diagnosis="The following packages were not removed: %s" % ", ".join(pkg_names),
             )
         else:
             self.add_message(
@@ -161,7 +144,7 @@ class RemoveRepositoryFilesPackages(actions.Action):
         logger.task("Convert: Remove packages containing .repo files")
         logger.info("Searching for packages containing .repo files or affecting variables in the .repo files:\n")
         try:
-            pkgs_to_remove = sorted(pkghandler._get_packages_to_remove(system_info.repofile_pkgs))
+            pkgs_to_remove = sorted(pkghandler.get_packages_to_remove(system_info.repofile_pkgs))
             # this call can return None, which is not ideal to use with sorted.
             pkgs_removed = sorted(pkghandler.remove_pkgs_unless_from_redhat(pkgs_to_remove) or [])
 
@@ -183,12 +166,13 @@ class RemoveRepositoryFilesPackages(actions.Action):
         # shows which packages were not removed, if false, all packages were removed
         pkgs_not_removed = sorted(frozenset(pkgs_to_remove).difference(pkgs_removed))
         if pkgs_not_removed:
+            pkg_names = _get_pkg_names(pkgs_not_removed)
             self.add_message(
                 level="WARNING",
                 id="REPOSITORY_FILE_PACKAGES_NOT_REMOVED",
                 title="Repository file packages not removed",
                 description="Repository file packages which could not be removed",
-                diagnosis="The following packages were not removed: %s" % ", ".join(pkgs_not_removed),
+                diagnosis="The following packages were not removed: %s" % ", ".join(pkg_names),
             )
         else:
             self.add_message(

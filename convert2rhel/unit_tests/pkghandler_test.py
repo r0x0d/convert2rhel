@@ -154,17 +154,6 @@ class RunSubprocessMocked(unit_tests.MockFunction):
         return self.output, self.ret_code
 
 
-class GetInstalledPkgsWFingerprintsMocked(unit_tests.MockFunction):
-    obj1 = create_pkg_information(name="pkg1", fingerprint="199e2f91fd431d51")  # RHEL
-    obj2 = create_pkg_information(name="pkg2", fingerprint="72f97b74ec551f03")  # OL
-    obj3 = create_pkg_information(
-        name="gpg-pubkey", version="1.0.0", release="1", arch="x86_64", fingerprint="199e2f91fd431d51"  # RHEL
-    )
-
-    def __call__(self, *args, **kwargs):
-        return [self.obj1, self.obj2, self.obj3]
-
-
 class PrintPkgInfoMocked(unit_tests.MockFunction):
     def __init__(self):
         self.called = 0
@@ -1838,15 +1827,15 @@ class GetInstalledPkgObjectsWDiffFingerprintMocked(unit_tests.MockFunction):
         return [pkg_obj]
 
 
-def test_get_packages_to_remove(monkeypatch):
+def testget_packages_to_remove(monkeypatch):
     monkeypatch.setattr(system_info, "fingerprints_rhel", ["rhel_fingerprint"])
     monkeypatch.setattr(
         pkghandler, "get_installed_pkgs_w_different_fingerprint", GetInstalledPkgObjectsWDiffFingerprintMocked()
     )
-    original_func = pkghandler._get_packages_to_remove.__wrapped__
-    monkeypatch.setattr(pkghandler, "_get_packages_to_remove", mock_decorator(original_func))
+    original_func = pkghandler.get_packages_to_remove.__wrapped__
+    monkeypatch.setattr(pkghandler, "get_packages_to_remove", mock_decorator(original_func))
 
-    result = pkghandler._get_packages_to_remove(["installed_pkg", "not_installed_pkg"])
+    result = pkghandler.get_packages_to_remove(["installed_pkg", "not_installed_pkg"])
     assert len(result) == 1
     assert result[0].nevra.name == "installed_pkg"
 
@@ -1953,7 +1942,7 @@ def test_get_third_party_pkgs(fingerprint_orig_os, expected_count, expected_pkgs
     monkeypatch.setattr(utils, "ask_to_continue", DumbCallableObject())
     monkeypatch.setattr(pkghandler, "format_pkg_info", PrintPkgInfoMocked())
     monkeypatch.setattr(system_info, "fingerprints_orig_os", fingerprint_orig_os)
-    monkeypatch.setattr(pkghandler, "get_installed_pkg_information", GetInstalledPkgsWFingerprintsMocked())
+    monkeypatch.setattr(pkghandler, "get_installed_pkg_information", unit_tests.GetInstalledPkgsWFingerprintsMocked())
 
     pkgs = pkghandler.get_third_party_pkgs()
 
@@ -1963,7 +1952,7 @@ def test_get_third_party_pkgs(fingerprint_orig_os, expected_count, expected_pkgs
 
 def test_list_non_red_hat_pkgs_left(monkeypatch):
     monkeypatch.setattr(pkghandler, "format_pkg_info", PrintPkgInfoMocked())
-    monkeypatch.setattr(pkghandler, "get_installed_pkg_information", GetInstalledPkgsWFingerprintsMocked())
+    monkeypatch.setattr(pkghandler, "get_installed_pkg_information", unit_tests.GetInstalledPkgsWFingerprintsMocked())
     pkghandler.list_non_red_hat_pkgs_left()
 
     assert len(pkghandler.format_pkg_info.pkgs) == 1
