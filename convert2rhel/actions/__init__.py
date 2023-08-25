@@ -22,7 +22,6 @@ import importlib
 import itertools
 import logging
 import pkgutil
-import re
 import traceback
 
 from functools import wraps

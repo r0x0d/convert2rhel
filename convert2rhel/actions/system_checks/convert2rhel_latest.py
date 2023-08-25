@@ -94,19 +94,17 @@ class Convert2rhelLatest(actions.Action):
             shutil.rmtree(repo_dir)
 
         if return_code != 0:
-            logger.warning(
+            diagnosis = (
                 "Couldn't check if the current installed Convert2RHEL is the latest version.\n"
                 "repoquery failed with the following output:\n%s" % (raw_output_convert2rhel_versions)
             )
+            logger.warning(diagnosis)
             self.add_message(
                 level="WARNING",
                 id="CONVERT2RHEL_LATEST_CHECK_SKIP",
                 title="Convert2rhel latest version check skip",
                 description="Skipping the convert2hel latest version check",
-                diagnosis=(
-                    "Couldn't check if the current installed Convert2RHEL is the latest version.\n"
-                    "repoquery failed with the following output:\n%s" % (raw_output_convert2rhel_versions)
-                ),
+                diagnosis=diagnosis,
             )
             return
 
@@ -189,23 +187,20 @@ class Convert2rhelLatest(actions.Action):
                         diagnosis="You are using the deprecated 'CONVERT2RHEL_UNSUPPORTED_VERSION'",
                         remediation="Please switch to the 'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable instead",
                     )
-                logger.warning(
+
+                diagnosis = (
                     "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
                     "'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable detected, continuing conversion"
                     % (installed_convert2rhel_version, latest_available_version[1])
                 )
+                logger.warning(diagnosis)
                 self.add_message(
                     level="WARNING",
                     id="ALLOW_OLDER_VERSION_ENVIRONMENT_VARIABLE",
                     title="Outdated Convert2RHEL version detected",
                     description="An outdated Convert2RHEL version has been detected",
-                    diagnosis=(
-                        "You are currently running %s and the latest version of Convert2RHEL is %s.\n"
-                        "'CONVERT2RHEL_ALLOW_OLDER_VERSION' environment variable detected, continuing conversion"
-                        % (installed_convert2rhel_version, latest_available_version[1])
-                    ),
+                    diagnosis=diagnosis,
                 )
-
             else:
                 if int(system_info.version.major) <= 6:
                     logger.warning(
