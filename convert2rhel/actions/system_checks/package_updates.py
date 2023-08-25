@@ -16,7 +16,6 @@
 __metaclass__ = type
 
 import logging
-import os
 
 from convert2rhel import actions, pkgmanager, utils
 from convert2rhel.pkghandler import get_total_packages_to_update
