@@ -125,7 +125,11 @@ def test_c2r_latest_older_inhibit(convert2rhel, c2r_version, version):
         c2r.expect("Continue with the system conversion?")
         c2r.sendline("y")
 
-        assert c2r.expect("CONVERT2RHEL_LATEST_VERSION::OUT_OF_DATE - You are currently running 0.01", timeout=300) == 0
+        assert (
+            c2r.expect("CONVERT2RHEL_LATEST_VERSION::OUT_OF_DATE - Outdated Convert2RHEL version detected", timeout=300)
+            == 0
+        )
+        assert c2r.expect("Diagnosis: You are currently running 0.01.0", timeout=300) == 0
         assert c2r.expect("Only the latest version is supported for conversion.", timeout=300) == 0
 
         c2r.sendcontrol("c")
