@@ -34,10 +34,7 @@ def test_failures_and_skips_in_report(convert2rhel):
         assert c2r.expect("Could not be checked due to other failures", timeout=600) == 0
         c2r.expect("ENSURE_KERNEL_MODULES_COMPATIBILITY::SKIP - Skipped")
 
-        # Success header
-        assert c2r.expect("No changes needed", timeout=600) == 0
-
-    assert c2r.exitstatus == 0
+    assert c2r.exitstatus == 1
 
 
 @pytest.mark.test_successful_report
