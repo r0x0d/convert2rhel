@@ -510,7 +510,7 @@ def _remove_orig_boot_entry(efibootinfo_orig, efibootinfo_new):
     )
 
 
-def _replace_efi_boot_entry():
+def replace_efi_boot_entry():
     """Replace the current UEFI bootloader entry with the RHEL one.
 
     The current UEFI bootloader entry could be invalid or misleading. It's
@@ -592,7 +592,7 @@ def post_ponr_set_efi_configuration():
     _remove_efi_centos()
 
     try:
-        _replace_efi_boot_entry()
+        replace_efi_boot_entry()
     except BootloaderError as e:
         _log_critical_error(e.message)
 

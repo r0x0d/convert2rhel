@@ -365,9 +365,9 @@ def test_post_ponr_set_efi_configuration(
     monkeypatch.setattr("convert2rhel.grub.is_efi", mock.Mock(return_value=is_efi))
     monkeypatch.setattr("convert2rhel.grub._copy_grub_files", mock.Mock(return_value=copy_files_ok))
     monkeypatch.setattr("convert2rhel.grub._remove_efi_centos", mock.Mock())
-    monkeypatch.setattr("convert2rhel.grub._replace_efi_boot_entry", mock.Mock())
+    monkeypatch.setattr("convert2rhel.grub.replace_efi_boot_entry", mock.Mock())
     if replace_entry_exc:
-        grub._replace_efi_boot_entry.side_effect = replace_entry_exc
+        grub.replace_efi_boot_entry.side_effect = replace_entry_exc
 
     if raise_exc:
         with pytest.raises(SystemExit):
@@ -379,7 +379,7 @@ def test_post_ponr_set_efi_configuration(
 
     if is_efi and efi_file_exists and copy_files_ok and not replace_entry_exc:
         grub._remove_efi_centos.assert_called_once()
-        grub._replace_efi_boot_entry.assert_called_once()
+        grub.replace_efi_boot_entry.assert_called_once()
 
 
 EFIBOOTMGR_VERBOSE_OUTPUT = r"""

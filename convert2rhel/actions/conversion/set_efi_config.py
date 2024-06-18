@@ -186,7 +186,7 @@ class ReplaceEfiBootEntry(actions.Action):
         """
 
         try:
-            grub._replace_efi_boot_entry()
+            grub.replace_efi_boot_entry()
         except grub.BootloaderError as e:
             self.set_result(
                 level="ERROR",
