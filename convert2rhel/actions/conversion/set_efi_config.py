@@ -19,7 +19,7 @@ import logging
 import os
 import shutil
 
-from convert2rhel import actions, grub, systeminfo, utils
+from convert2rhel import actions, grub, systeminfo
 from convert2rhel.grub import CENTOS_EFIDIR_CANONICAL_PATH, RHEL_EFIDIR_CANONICAL_PATH
 
 
@@ -149,6 +149,7 @@ class RemoveEfiCentos(actions.Action):
         deal with it.
         """
         if systeminfo.system_info.id != "centos":
+                    logger.debug("Skipping removing EFI files - only related to CentOS Linux.")
             # nothing to do
             return
         try:
