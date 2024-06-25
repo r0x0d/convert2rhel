@@ -200,7 +200,7 @@ def test__copy_grub_files_io_error(
 
     monkeypatch.setattr(shutil, "copy2", mock.Mock())
     shutil.copy2.side_effect = OSError()
-    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=lambda path: [False]))
+    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=lambda path: [False, True]))
     copy_grub_files_instance.run()
     print(copy_grub_files_instance.result)
     unit_tests.assert_actions_result(
