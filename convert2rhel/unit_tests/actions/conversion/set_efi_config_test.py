@@ -187,11 +187,7 @@ def test__copy_grub_files_error(
     ("sys_id", "src_file_exists", "dst_file_exists", "ret_value"),
     (("centos", False, False, False),),
 )
-@mock.patch("shutil.copy2")
-@mock.patch("os.path.exists")
 def test__copy_grub_files_io_error(
-    mock_path_exists,
-    mock_path_copy2,
     monkeypatch,
     caplog,
     sys_id,
@@ -202,8 +198,9 @@ def test__copy_grub_files_io_error(
     copy_grub_files_instance,
 ):
 
-    monkeypatch.setattr("shutil.copy2", mock.Mock())
+    monkeypatch.setattr(shutil, "copy2", mock.Mock())
     shutil.copy2.side_effect = OSError()
+    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=lambda path: [False]))
     copy_grub_files_instance.run()
     print(copy_grub_files_instance.result)
     unit_tests.assert_actions_result(
@@ -238,7 +235,7 @@ def test_remove_efi_centos_warning(monkeypatch, remove_efi_centos_instance):
     def test_replace_efi_boot_entry_error(monkeypatch, replace_efi_boot_entry_instance):
 
         monkeypatch.setattr(
-            "convert2rhel.grub.replace_efi_boot_entry", mock.Mock(side_effect=grub.BootloaderError("Bootloader error"))
+            grub, "replace_efi_boot_entry", mock.Mock(side_effect=grub.BootloaderError("Bootloader error"))
         )
         replace_efi_boot_entry_instance.run()
         print(replace_efi_boot_entry_instance.result)

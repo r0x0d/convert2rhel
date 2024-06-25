@@ -114,6 +114,7 @@ class CopyGrubFiles(actions.Action):
             dst_path = os.path.join(RHEL_EFIDIR_CANONICAL_PATH, filename)
             if os.path.exists(dst_path):
                 logger.debug("The %s file already exists. Copying skipped." % dst_path)
+                print("bad PATH")
                 continue
             if not os.path.exists(src_path):
                 if filename in required:
@@ -127,6 +128,7 @@ class CopyGrubFiles(actions.Action):
                     return
             logger.info("Copying '%s' to '%s'" % (src_path, dst_path))
             try:
+                print("copy2 block")
                 shutil.copy2(src_path, dst_path)
             except (OSError, IOError) as err:
                 print("3")
@@ -158,7 +160,7 @@ class RemoveEfiCentos(actions.Action):
         super(RemoveEfiCentos, self).run()
 
         if systeminfo.system_info.id != "centos":
-                    logger.debug("Skipping removing EFI files - only related to CentOS Linux.")
+            logger.debug("Skipping removing EFI files - only related to CentOS Linux.")
             # nothing to do
             return
         try:
