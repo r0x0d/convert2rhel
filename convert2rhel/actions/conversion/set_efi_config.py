@@ -114,7 +114,6 @@ class CopyGrubFiles(actions.Action):
             dst_path = os.path.join(RHEL_EFIDIR_CANONICAL_PATH, filename)
             if os.path.exists(dst_path):
                 logger.debug("The %s file already exists. Copying skipped." % dst_path)
-                print("bad PATH")
                 continue
             if not os.path.exists(src_path):
                 if filename in required:
@@ -128,10 +127,8 @@ class CopyGrubFiles(actions.Action):
                     return
             logger.info("Copying '%s' to '%s'" % (src_path, dst_path))
             try:
-                print("copy2 block")
                 shutil.copy2(src_path, dst_path)
             except (OSError, IOError) as err:
-                print("3")
                 # IOError for py2 and OSError for py3
                 self.set_result(
                     level="ERROR",
@@ -146,7 +143,7 @@ class CopyGrubFiles(actions.Action):
 
 class RemoveEfiCentos(actions.Action):
     id = "REMOVE_EFI_CENTOS"
-    dependencies = "COPY_GRUB_FILES"
+    dependencies = ("COPY_GRUB_FILES",)
 
     def run(self):
         """Remove the /boot/efi/EFI/centos/ directory when no UEFI files remains.

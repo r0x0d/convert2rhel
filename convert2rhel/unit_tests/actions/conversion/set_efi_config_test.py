@@ -21,10 +21,8 @@ import pytest
 import six
 
 from convert2rhel import actions, exceptions, grub, unit_tests
-from convert2rhel.actions import STATUS_CODE
 from convert2rhel.actions.conversion import set_efi_config
-from convert2rhel.pkgmanager.handlers.base import TransactionHandlerBase
-from convert2rhel.unit_tests.conftest import all_systems, centos7, centos8
+from convert2rhel.unit_tests.conftest import all_systems, centos7
 
 
 six.add_move(six.MovedModule("mock", "mock", "unittest.mock"))
@@ -112,11 +110,11 @@ def test_efi_bootmgr_utility_installed_error(efi_bootmgr_utility_installed_insta
 
 
 @pytest.mark.parametrize(
-    ("sys_id", "src_file_exists", "dst_file_exists", "log_msg", "ret_value"),
+    ("sys_id", "src_file_exists", "dst_file_exists", "log_msg"),
     (
-        ("oracle", None, None, "only related to CentOS Linux", True),
-        ("centos", None, True, "file already exists", True),
-        ("centos", True, False, "Copying '", True),
+        ("oracle", None, None, "only related to CentOS Linux"),
+        ("centos", None, True, "file already exists"),
+        ("centos", True, False, "Copying '"),
     ),
 )
 @mock.patch("shutil.copy2")
@@ -128,7 +126,6 @@ def test__copy_grub_files(
     src_file_exists,
     dst_file_exists,
     log_msg,
-    ret_value,
     monkeypatch,
     caplog,
     copy_grub_files_instance,
@@ -150,8 +147,8 @@ def test__copy_grub_files(
 
 
 @pytest.mark.parametrize(
-    ("sys_id", "src_file_exists", "dst_file_exists", "ret_value"),
-    (("centos", False, False, False),),
+    ("sys_id", "src_file_exists", "dst_file_exists"),
+    (("centos", False, False),),
 )
 @mock.patch("shutil.copy2")
 @mock.patch("os.path.exists")
@@ -161,7 +158,6 @@ def test__copy_grub_files_error(
     sys_id,
     src_file_exists,
     dst_file_exists,
-    ret_value,
     monkeypatch,
     caplog,
     copy_grub_files_instance,
@@ -184,8 +180,8 @@ def test__copy_grub_files_error(
 
 @centos7
 @pytest.mark.parametrize(
-    ("sys_id", "src_file_exists", "dst_file_exists", "ret_value"),
-    (("centos", False, False, False),),
+    ("sys_id", "src_file_exists", "dst_file_exists"),
+    (("centos", False, False),),
 )
 def test__copy_grub_files_io_error(
     monkeypatch,
@@ -193,22 +189,20 @@ def test__copy_grub_files_io_error(
     sys_id,
     src_file_exists,
     dst_file_exists,
-    ret_value,
     pretend_os,
     copy_grub_files_instance,
 ):
 
     monkeypatch.setattr(shutil, "copy2", mock.Mock())
-    shutil.copy2.side_effect = OSError()
-    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=lambda path: [False, True]))
+    shutil.copy2.side_effect = IOError(13, "Permission denied")
+    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=[False, True, True, True]))
     copy_grub_files_instance.run()
-    print(copy_grub_files_instance.result)
     unit_tests.assert_actions_result(
         copy_grub_files_instance,
         level="ERROR",
         id="IO_ERROR",
         title="I/O error",
-        description=("I/O error(%s): %s Some GRUB files have not been copied to /boot/efi/EFI/redhat."),
+        description=("I/O error(13): Permission denied Some GRUB files have not been copied to /boot/efi/EFI/redhat."),
     )
 
 
@@ -232,17 +226,15 @@ def test_remove_efi_centos_warning(monkeypatch, remove_efi_centos_instance):
     assert expected.issuperset(remove_efi_centos_instance.messages)
     assert expected.issubset(remove_efi_centos_instance.messages)
 
-    def test_replace_efi_boot_entry_error(monkeypatch, replace_efi_boot_entry_instance):
 
-        monkeypatch.setattr(
-            grub, "replace_efi_boot_entry", mock.Mock(side_effect=grub.BootloaderError("Bootloader error"))
-        )
-        replace_efi_boot_entry_instance.run()
-        print(replace_efi_boot_entry_instance.result)
-        unit_tests.assert_actions_result(
-            replace_efi_boot_entry_instance,
-            level="ERROR",
-            id="BOOTLOADER_ERROR",
-            title="Bootloader error",
-            description="Bootloader error",
-        )
+def test_replace_efi_boot_entry_error(monkeypatch, replace_efi_boot_entry_instance):
+
+    monkeypatch.setattr(grub, "replace_efi_boot_entry", mock.Mock(side_effect=grub.BootloaderError("Bootloader error")))
+    replace_efi_boot_entry_instance.run()
+    unit_tests.assert_actions_result(
+        replace_efi_boot_entry_instance,
+        level="ERROR",
+        id="BOOTLOADER_ERROR",
+        title="Bootloader error",
+        description="Bootloader error",
+    )
