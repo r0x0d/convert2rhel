@@ -20,9 +20,9 @@ import shutil
 import pytest
 import six
 
-from convert2rhel import actions, exceptions, grub, unit_tests
+from convert2rhel import actions, grub, unit_tests
 from convert2rhel.actions.conversion import set_efi_config
-from convert2rhel.unit_tests.conftest import all_systems, centos7
+from convert2rhel.unit_tests.conftest import centos7
 
 
 six.add_move(six.MovedModule("mock", "mock", "unittest.mock"))
