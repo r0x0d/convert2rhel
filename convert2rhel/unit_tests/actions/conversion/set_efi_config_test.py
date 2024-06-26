@@ -129,6 +129,7 @@ def test__copy_grub_files(
 ):
     def path_exists(path):
         return src_file_exists if grub.CENTOS_EFIDIR_CANONICAL_PATH in path else dst_file_exists
+
     monkeypatch.setattr(os.path, "exists", path_exists)
     monkeypatch.setattr(shutil, "copy2", mock.Mock())
     global_system_info.id = sys_id
@@ -148,13 +149,7 @@ def test__copy_grub_files(
     (("centos", False, False),),
 )
 def test__copy_grub_files_error(
-    sys_id,
-    src_file_exists,
-    dst_file_exists,
-    monkeypatch,
-    caplog,
-    copy_grub_files_instance,
-    global_system_info
+    sys_id, src_file_exists, dst_file_exists, monkeypatch, caplog, copy_grub_files_instance, global_system_info
 ):
     def path_exists(path):
         return src_file_exists if grub.CENTOS_EFIDIR_CANONICAL_PATH in path else dst_file_exists
