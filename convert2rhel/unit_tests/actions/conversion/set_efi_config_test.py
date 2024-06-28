@@ -130,14 +130,14 @@ def test__copy_grub_files(
     def path_exists(path):
         return src_file_exists if grub.CENTOS_EFIDIR_CANONICAL_PATH in path else dst_file_exists
 
-    monkeypatch.setattr(os.path, "exists", path_exists)
+    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=path_exists))
     monkeypatch.setattr(shutil, "copy2", mock.Mock())
     global_system_info.id = sys_id
 
     copy_grub_files_instance.run()
     assert any(log_msg in record.message for record in caplog.records)
     if sys_id == "centos" and src_file_exists and not dst_file_exists:
-        assert mock_path_copy2.call_args_list == [
+        assert shutil.copy2.call_args_list == [
             mock.call("/boot/efi/EFI/centos/grubenv", "/boot/efi/EFI/redhat/grubenv"),
             mock.call("/boot/efi/EFI/centos/grub.cfg", "/boot/efi/EFI/redhat/grub.cfg"),
             mock.call("/boot/efi/EFI/centos/user.cfg", "/boot/efi/EFI/redhat/user.cfg"),
