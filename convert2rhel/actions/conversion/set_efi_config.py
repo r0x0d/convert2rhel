@@ -109,7 +109,7 @@ class CopyGrubFiles(actions.Action):
         all_files = ["grubenv", "grub.cfg", "user.cfg"]
         required = all_files[:2]
 
-        # Verify if all_files are exist in the `py:CENTOS_EFIDIR_CANONICAL_PATH` directory, if so, add the file_name to
+        # Verify if all_files exist in the `py:CENTOS_EFIDIR_CANONICAL_PATH` directory, if so, add the file_name to
         # the list of src_paths
         src_paths = [
             filename
