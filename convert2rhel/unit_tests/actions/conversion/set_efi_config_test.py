@@ -155,7 +155,7 @@ def test__copy_grub_files_error(
     def path_exists(path):
         return src_file_exists if grub.CENTOS_EFIDIR_CANONICAL_PATH in path else dst_file_exists
 
-    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=path_exists))
+    monkeypatch.setattr(os.path, "exists", mock.Mock(side_effect=[False, False, False, False, False, False]))
     monkeypatch.setattr(shutil, "copy2", mock.Mock())
     global_system_info.id = sys_id
     monkeypatch.setattr("convert2rhel.systeminfo.system_info.id", sys_id)

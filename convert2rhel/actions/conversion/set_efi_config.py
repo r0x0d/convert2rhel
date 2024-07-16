@@ -111,16 +111,11 @@ class CopyGrubFiles(actions.Action):
 
         # Verify if all_files exist in the `py:CENTOS_EFIDIR_CANONICAL_PATH` directory, if so, add the file_name to
         # the list of src_paths
-        src_paths = [
-            filename
-            for filename in all_files
-            if os.path.exists(os.path.join(CENTOS_EFIDIR_CANONICAL_PATH, filename)) or filename in required
-        ]
+        src_paths = [filename for filename in all_files if os.path.exists(filename) and filename in required]
 
         # Verify if all destination paths exists in the `py:RHEL_EFIDIR_CANONICAL_PATH`, if so, add the file_name to the
         # list of dst_paths.
         dst_path = [path for path in all_files if os.path.exists(os.path.join(RHEL_EFIDIR_CANONICAL_PATH, path))]
-
         if not src_paths:
             # without the required files user should not reboot the system
             self.set_result(
